@@ -110,7 +110,7 @@ export default function Auth() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-black text-chalk font-body text-sm rounded px-4 py-3 border border-steel/20 focus:border-iron focus:outline-none transition-colors"
+              className="bg-black text-chalk font-body text-base rounded px-4 py-3 border border-steel/20 focus:border-iron focus:outline-none transition-colors"
               style={{ caretColor: "#dfff00" }}
             />
           </div>
@@ -128,7 +128,7 @@ export default function Auth() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-black text-chalk font-body text-sm rounded px-4 py-3 border border-steel/20 focus:border-iron focus:outline-none transition-colors"
+              className="bg-black text-chalk font-body text-base rounded px-4 py-3 border border-steel/20 focus:border-iron focus:outline-none transition-colors"
               style={{ caretColor: "#dfff00" }}
             />
           </div>

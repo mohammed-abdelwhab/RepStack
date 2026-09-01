@@ -107,12 +107,12 @@ function SetRow({
           readOnly={!isEditMode}
           className="w-full text-center rounded-md border transition-all duration-150 font-display"
           style={{
-            fontSize: isWarmup ? 15 : 22,
+            fontSize: isWarmup ? 16 : 22,
             fontWeight: isWarmup ? 400 : 600,
             color: isWarmup ? "#565C66" : "#EDEDEA",
             background: "transparent",
             border: isEditMode
-              ? "1px solid rgba(196,98,45,0.35)"
+              ? "1px solid rgba(223, 255, 0, 0.35)"
               : "1px solid transparent",
             outline: "none",
             padding: "2px 4px",
@@ -121,13 +121,13 @@ function SetRow({
           }}
           onFocus={(e) => {
             if (isEditMode) {
-              e.target.style.border = "1px solid rgba(196,98,45,0.8)";
-              e.target.style.boxShadow = "0 0 0 3px rgba(196,98,45,0.15)";
+              e.target.style.border = "1px solid #dfff00";
+              e.target.style.boxShadow = "0 0 0 3px rgba(223, 255, 0, 0.15)";
             }
           }}
           onBlur={(e) => {
             e.target.style.border = isEditMode
-              ? "1px solid rgba(196,98,45,0.35)"
+              ? "1px solid rgba(223, 255, 0, 0.35)"
               : "1px solid transparent";
             e.target.style.boxShadow = "none";
           }}
@@ -153,12 +153,12 @@ function SetRow({
           readOnly={!isEditMode}
           className="w-full text-center rounded-md transition-all duration-150 font-display"
           style={{
-            fontSize: isWarmup ? 15 : 22,
+            fontSize: isWarmup ? 16 : 22,
             fontWeight: isWarmup ? 400 : 600,
             color: isWarmup ? "#565C66" : "#EDEDEA",
             background: "transparent",
             border: isEditMode
-              ? "1px solid rgba(196,98,45,0.35)"
+              ? "1px solid rgba(223, 255, 0, 0.35)"
               : "1px solid transparent",
             outline: "none",
             padding: "2px 4px",
@@ -167,13 +167,13 @@ function SetRow({
           }}
           onFocus={(e) => {
             if (isEditMode) {
-              e.target.style.border = "1px solid rgba(196,98,45,0.8)";
-              e.target.style.boxShadow = "0 0 0 3px rgba(196,98,45,0.15)";
+              e.target.style.border = "1px solid #dfff00";
+              e.target.style.boxShadow = "0 0 0 3px rgba(223, 255, 0, 0.15)";
             }
           }}
           onBlur={(e) => {
             e.target.style.border = isEditMode
-              ? "1px solid rgba(196,98,45,0.35)"
+              ? "1px solid rgba(223, 255, 0, 0.35)"
               : "1px solid transparent";
             e.target.style.boxShadow = "none";
           }}
@@ -344,12 +344,12 @@ export function ExerciseCard({
             aria-label={`Notes for ${exercise.name}`}
             className="w-full resize-none font-body transition-all duration-150"
             style={{
-              fontSize: 12,
-              color: "#565C66",
-              background: "transparent",
-              border: isEditMode ? "1px solid rgba(196,98,45,0.2)" : "none",
+              fontSize: 16,
+              color: "#e5e2e1",
+              background: isEditMode ? "rgba(0, 0, 0, 0.4)" : "transparent",
+              border: isEditMode ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
               borderRadius: isEditMode ? 6 : 0,
-              padding: isEditMode ? "6px 8px" : 0,
+              padding: isEditMode ? "8px 10px" : 0,
               outline: "none",
               lineHeight: 1.5,
               letterSpacing: "0.01em",
@@ -357,13 +357,13 @@ export function ExerciseCard({
             }}
             onFocus={(e) => {
               if (isEditMode) {
-                e.target.style.border = "1px solid rgba(196,98,45,0.6)";
-                e.target.style.boxShadow = "0 0 0 3px rgba(196,98,45,0.12)";
+                e.target.style.border = "1px solid #dfff00";
+                e.target.style.boxShadow = "0 0 0 3px rgba(223, 255, 0, 0.12)";
               }
             }}
             onBlur={(e) => {
               e.target.style.border = isEditMode
-                ? "1px solid rgba(196,98,45,0.2)"
+                ? "1px solid rgba(255, 255, 255, 0.1)"
                 : "none";
               e.target.style.boxShadow = "none";
             }}

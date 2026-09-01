@@ -124,8 +124,17 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* ─── Prevent mobile browsers (iOS Safari / Chrome) auto-zooming on input focus ── */
+@media screen and (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* ─── Focus-visible ring override ────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid #c4622d;
+  outline: 2px solid #dfff00;
   outline-offset: 2px;
 }

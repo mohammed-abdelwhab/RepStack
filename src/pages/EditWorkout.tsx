@@ -325,7 +325,7 @@ export default function EditWorkout() {
                         onChange={(e) =>
                           handleExerciseChange(ex.id, "name", e.target.value)
                         }
-                        className="bg-black text-chalk font-body text-sm rounded px-3 py-2 border border-steel/20 focus:border-iron focus:outline-none"
+                        className="bg-black text-chalk font-body text-base rounded px-3.5 py-2.5 border border-steel/20 focus:border-iron focus:outline-none"
                       />
                     </div>
 
@@ -345,7 +345,7 @@ export default function EditWorkout() {
                               ex.workingSetCount - 1,
                             )
                           }
-                          className="w-7 h-7 rounded flex items-center justify-center font-bold bg-zinc-800 disabled:opacity-30 cursor-pointer"
+                          className="w-7 h-7 rounded flex items-center justify-center font-bold bg-zinc-800 disabled:opacity-30 cursor-pointer text-white"
                         >
                           -
                         </button>
@@ -361,7 +361,7 @@ export default function EditWorkout() {
                               ex.workingSetCount + 1,
                             )
                           }
-                          className="w-7 h-7 rounded flex items-center justify-center font-bold bg-zinc-800 cursor-pointer"
+                          className="w-7 h-7 rounded flex items-center justify-center font-bold bg-zinc-800 cursor-pointer text-white"
                         >
                           +
                         </button>
@@ -380,12 +380,26 @@ export default function EditWorkout() {
                         onChange={(e) =>
                           handleExerciseChange(ex.id, "notes", e.target.value)
                         }
-                        className="bg-black text-chalk font-body text-xs rounded px-3 py-2 border border-steel/15 focus:border-iron focus:outline-none"
+                        className="bg-black text-chalk font-body text-base rounded px-3.5 py-2.5 border border-steel/15 focus:border-iron focus:outline-none"
                       />
                     </div>
                   </div>
                 ))
               )}
+
+              {/* Bottom Add Exercise Button */}
+              <button
+                type="button"
+                onClick={handleAddExerciseRow}
+                className="w-full py-3.5 rounded-xl border border-dashed text-xs font-display font-bold uppercase transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] hover:border-iron"
+                style={{
+                  background: "rgba(223, 255, 0, 0.04)",
+                  borderColor: "rgba(223, 255, 0, 0.35)",
+                  color: "#dfff00",
+                }}
+              >
+                + ADD ANOTHER EXERCISE
+              </button>
             </div>
           </div>
 
