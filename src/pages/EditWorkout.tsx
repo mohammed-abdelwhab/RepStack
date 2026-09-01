@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
+import { StatusAlert } from "../components/StatusAlert";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 
 interface EditableExercise {
   id: number;
@@ -30,6 +32,7 @@ export default function EditWorkout() {
   const [exercises, setExercises] = useState<EditableExercise[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   // Populate local form state
   useEffect(() => {
@@ -168,12 +171,8 @@ export default function EditWorkout() {
     }
   };
 
-  const handleDeleteRoutine = async () => {
-    const confirm = window.confirm(
-      `Are you sure you want to delete the "${dbDay.name}" routine? This will permanently delete all its exercises and configurations.`,
-    );
-    if (!confirm) return;
-
+  const executeDeleteRoutine = async () => {
+    setIsConfirmDeleteOpen(false);
     setIsLoading(true);
     try {
       await deleteWorkoutDay(dbDay.id);
@@ -227,7 +226,7 @@ export default function EditWorkout() {
         <div>
           <button
             type="button"
-            onClick={handleDeleteRoutine}
+            onClick={() => setIsConfirmDeleteOpen(true)}
             className="font-display font-bold text-xs uppercase px-3 py-1.5 rounded transition-all cursor-pointer"
             style={{
               background: "rgba(255, 49, 49, 0.1)",
@@ -404,16 +403,11 @@ export default function EditWorkout() {
           </div>
 
           {error && (
-            <p
-              className="font-body text-xs p-3 rounded"
-              style={{
-                background: "rgba(255, 49, 49, 0.1)",
-                color: "#ff3131",
-                border: "1px solid rgba(255, 49, 49, 0.2)",
-              }}
-            >
-              {error}
-            </p>
+            <StatusAlert
+              variant="error"
+              message={error}
+              onClose={() => setError("")}
+            />
           )}
 
           {/* Submit Save */}
@@ -432,6 +426,18 @@ export default function EditWorkout() {
           </button>
         </form>
       </main>
+
+      {/* Custom Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmDeleteOpen}
+        title="Delete Routine"
+        message={`Are you sure you want to delete the "${dbDay.name}" routine? This will permanently delete all its exercises and configuration.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={executeDeleteRoutine}
+        onCancel={() => setIsConfirmDeleteOpen(false)}
+      />
     </div>
   );
 }

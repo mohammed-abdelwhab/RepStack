@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
 import { signUpUser, signInUser } from "../lib/auth";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { StatusAlert } from "../components/StatusAlert";
 
 export default function Auth() {
   type Mode = "signIn" | "signUp";
@@ -15,6 +16,7 @@ export default function Auth() {
   const [mode, setMode] = useState<Mode>("signIn");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // If user is already logged in, redirect them immediately to Dashboard
   useEffect(() => {
@@ -30,6 +32,7 @@ export default function Auth() {
       return;
     }
     setError("");
+    setSuccessMessage("");
     setIsLoading(true);
 
     try {
@@ -39,8 +42,8 @@ export default function Auth() {
           setError(err.message);
         } else if (data.user && !data.session) {
           // Signup confirmation required
-          setError(
-            "Account created! Please check your email for a verification link.",
+          setSuccessMessage(
+            "Account created! Please check your email inbox for a verification link.",
           );
         } else if (data.session) {
           navigate("/", { replace: true });
@@ -134,16 +137,20 @@ export default function Auth() {
           </div>
 
           {error && (
-            <p
-              className="font-body text-xs p-3 rounded"
-              style={{
-                background: "rgba(255, 49, 49, 0.1)",
-                color: "#ff3131",
-                border: "1px solid rgba(255, 49, 49, 0.2)",
-              }}
-            >
-              {error}
-            </p>
+            <StatusAlert
+              variant="error"
+              message={error}
+              onClose={() => setError("")}
+            />
+          )}
+
+          {successMessage && (
+            <StatusAlert
+              variant="success"
+              title="Verification Email Sent"
+              message={successMessage}
+              onClose={() => setSuccessMessage("")}
+            />
           )}
 
           {isLoading ? (

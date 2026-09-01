@@ -6,6 +6,8 @@ import { BottomTabBar } from "../components/BottomTabBar";
 import { ExerciseCard } from "../components/ExerciseCard";
 import { PRCelebration } from "../components/PRCelebration";
 import { RestTimer } from "../components/RestTimer";
+import { ToastNotification } from "../components/ToastNotification";
+import type { AlertVariant } from "../components/StatusAlert";
 import {
   getLastPerformanceForExercise,
   getGlobalPRForExercise,
@@ -32,6 +34,11 @@ export default function WorkoutSession() {
   const [timerVisible, setTimerVisible] = useState(false);
   const [timerDefault, setTimerDefault] = useState(90); // seconds
   const [prToast, setPrToast] = useState<PRToast | null>(null);
+  const [notification, setNotification] = useState<{
+    variant: AlertVariant;
+    title?: string;
+    message: string;
+  } | null>(null);
   const [isLogged, setIsLogged] = useState(false);
 
   // Find current day
@@ -274,14 +281,24 @@ export default function WorkoutSession() {
 
       if (foundPR) {
         setPrToast(foundPR);
+      } else {
+        setNotification({
+          variant: "success",
+          title: "Workout Logged",
+          message: `${dbDay.name} session saved to history!`,
+        });
       }
 
       // Automatically redirect to Dashboard after a short delay
       setTimeout(() => {
         navigate("/");
       }, 2500);
-    } catch (err) {
-      alert("Failed to log workout session. Please try again.");
+    } catch (err: any) {
+      setNotification({
+        variant: "error",
+        title: "Failed to Log Session",
+        message: err?.message || "Could not save workout. Please try again.",
+      });
     }
   };
 
@@ -476,6 +493,16 @@ export default function WorkoutSession() {
         onStatsOpen={() => navigate("/")}
         statsTab={{ id: "stats", name: "Stats" }}
       />
+
+      {/* Reusable Toast Notification */}
+      {notification && (
+        <ToastNotification
+          variant={notification.variant}
+          title={notification.title}
+          message={notification.message}
+          onClose={() => setNotification(null)}
+        />
+      )}
     </div>
   );
 }

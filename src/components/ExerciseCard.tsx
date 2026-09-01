@@ -347,7 +347,9 @@ export function ExerciseCard({
               fontSize: 16,
               color: "#e5e2e1",
               background: isEditMode ? "rgba(0, 0, 0, 0.4)" : "transparent",
-              border: isEditMode ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
+              border: isEditMode
+                ? "1px solid rgba(255, 255, 255, 0.1)"
+                : "none",
               borderRadius: isEditMode ? 6 : 0,
               padding: isEditMode ? "8px 10px" : 0,
               outline: "none",

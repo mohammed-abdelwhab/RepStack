@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
+import { StatusAlert } from "../components/StatusAlert";
 
 interface TempExercise {
   name: string;
@@ -271,16 +272,11 @@ export default function CreateWorkout() {
           </div>
 
           {error && (
-            <p
-              className="font-body text-xs p-3 rounded"
-              style={{
-                background: "rgba(255, 49, 49, 0.1)",
-                color: "#ff3131",
-                border: "1px solid rgba(255, 49, 49, 0.2)",
-              }}
-            >
-              {error}
-            </p>
+            <StatusAlert
+              variant="error"
+              message={error}
+              onClose={() => setError("")}
+            />
           )}
 
           {/* Submit */}
