@@ -1,43 +1,44 @@
 # System Architecture & Contributor Guide — RepStack
 
-This document details the architectural layout, database schemas, state management systems, and user navigation routes of the RepStack Gym Tracker. It is designed to help junior developers and contributors quickly ramp up and make modifications to the codebase.
+This document details the architectural layout, database schemas, state management systems, and user navigation routes of the RepStack Gym Tracker. It is designed to help junior developers and contributors quickly ramp up, study the architecture, and make modifications to the codebase.
 
 ---
 
 ## 🗺️ User Flow & Routing Topology
 
-RepStack uses **React Router v6** to manage page routing. Protected pages are wrapped in a `<ProtectedRoute>` component that verifies authentication status via the `useGymTracker` context hook.
+RepStack uses **React Router v6** with **code-splitting (`React.lazy()`)** for high performance. Protected pages are wrapped in a `<ProtectedRoute>` component that verifies authentication status via the `useGymTracker` context hook.
 
 ```mermaid
 graph TD
     A[Unauthenticated Visitor] -->|Access App| B{Auth Session Check}
     B -->|No Token| C[Auth Page /login]
+    B -->|Loading Session| S[PageSkeletonLoader Shimmer]
     B -->|Active Session| D[Dashboard Page /]
-
+    
     C -->|Sign Up / Sign In| D
-
+    
     D -->|Click Start Workout| E[Workout Session Page /workout/:dayId]
     D -->|Click New Day| F[Create Workout Page /workout/new]
     D -->|Click Edit Routine| G[Edit Workout Page /workout/:dayId/edit]
-
+    
     E -->|Log Workout| D
     F -->|Save Routine| D
     G -->|Update / Delete| D
 ```
 
-### Route Index
-
-- **`/login`**: Houses email login and registration forms. Built-in routing redirects back to the dashboard if a valid session exists.
-- **`/`**: The central Hub displaying active routines, past workouts history, and a weekly volume charts dashboard.
-- **`/workout/:dayId`**: The active workout dashboard displaying warmup/working set inputs, customizable rest timers, and the workout completion commit action.
-- **`/workout/new`**: Dedicated routine configuration page to build a new training day tab.
-- **`/workout/:dayId/edit`**: Routine modifications page allowing inline renames, additions/deletions of exercises, set configuration counts, or cascading deletion of the entire day.
+### Route & Code-Split Chunks Index
+- **`/login` (`Auth.tsx`)**: Lazy chunk (`~4.5 kB`). Houses email login and registration forms. Built-in routing redirects back to the dashboard if a valid session exists.
+- **`/` (`Dashboard.tsx`)**: Lazy chunk (`~26 kB`). The central Hub displaying active routines, exercise progression line charts, past workouts history, and weekly volume graphs.
+- **`/workout/:dayId` (`WorkoutSession.tsx`)**: Lazy chunk (`~28 kB`). The active workout dashboard displaying warmup/working set inputs, customizable rest timers, and the workout completion commit action.
+- **`/workout/new` (`CreateWorkout.tsx`)**: Lazy chunk (`~6 kB`). Dedicated routine configuration page to build a new training day tab.
+- **`/workout/:dayId/edit` (`EditWorkout.tsx`)**: Lazy chunk (`~10 kB`). Routine modifications page allowing inline renames, additions/deletions of exercises, set configuration counts, or cascading deletion of the entire day.
+- **`<PageSkeletonLoader />`**: Reusable instant skeleton loader that provides athletic dark shimmer placeholders during authentication resolution and route transitions in `<Suspense>`.
 
 ---
 
 ## 🗄️ Database Schema & Relational Model
 
-The backend is built in **Supabase (PostgreSQL)** with Row Level Security (RLS) enabled. Primary keys are configured as auto-incrementing numbers (`int8`).
+The backend is built on **Supabase (PostgreSQL)** with Row Level Security (RLS) enabled. Primary keys are configured as auto-incrementing numbers (`int8`).
 
 ```mermaid
 erDiagram
@@ -62,7 +63,7 @@ erDiagram
 2. **`exercises`**:
    - `id` (int8, PK): Auto-incrementing identifier.
    - `workout_day_id` (int8, FK): Points to `workout_days.id` (cascade delete).
-   - `name` (text): e.g., "Incline Bench Press".
+   - `name` (text): e.g., "Incline Chest Press".
    - `notes` (text): Details or instructions (nullable).
    - `image_url` (text): Custom photo uploads (nullable).
    - `sort_order` (int4): Display order within the day's routine.
@@ -97,6 +98,55 @@ erDiagram
 
 ---
 
+## 🔒 Row Level Security (RLS) SQL Policies
+
+Run this complete script in the Supabase SQL Editor (`Dashboard -> SQL Editor -> New Query`) to ensure all permissions and policies are active:
+
+```sql
+-- 1. Grant table & sequence permissions to authenticated users
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+-- 2. Enable RLS on all tables
+ALTER TABLE public.workout_days ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exercises ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exercise_set_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.set_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.personal_records ENABLE ROW LEVEL SECURITY;
+
+-- 3. Create RLS Policies
+CREATE POLICY "Users can manage their own workout days"
+ON public.workout_days FOR ALL TO authenticated
+USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage exercises in their own workout days"
+ON public.exercises FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM public.workout_days WHERE workout_days.id = exercises.workout_day_id AND workout_days.user_id = auth.uid()))
+WITH CHECK (EXISTS (SELECT 1 FROM public.workout_days WHERE workout_days.id = exercises.workout_day_id AND workout_days.user_id = auth.uid()));
+
+CREATE POLICY "Users can manage config for their own exercises"
+ON public.exercise_set_config FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM public.exercises JOIN public.workout_days ON workout_days.id = exercises.workout_day_id WHERE exercises.id = exercise_set_config.exercise_id AND workout_days.user_id = auth.uid()))
+WITH CHECK (EXISTS (SELECT 1 FROM public.exercises JOIN public.workout_days ON workout_days.id = exercises.workout_day_id WHERE exercises.id = exercise_set_config.exercise_id AND workout_days.user_id = auth.uid()));
+
+CREATE POLICY "Users can manage their own sessions"
+ON public.sessions FOR ALL TO authenticated
+USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage set entries for their own sessions"
+ON public.set_entries FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM public.sessions WHERE sessions.id = set_entries.session_id AND sessions.user_id = auth.uid()))
+WITH CHECK (EXISTS (SELECT 1 FROM public.sessions WHERE sessions.id = set_entries.session_id AND sessions.user_id = auth.uid()));
+
+CREATE POLICY "Users can manage personal records for their exercises"
+ON public.personal_records FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM public.exercises JOIN public.workout_days ON workout_days.id = exercises.workout_day_id WHERE exercises.id = personal_records.exercise_id AND workout_days.user_id = auth.uid()))
+WITH CHECK (EXISTS (SELECT 1 FROM public.exercises JOIN public.workout_days ON workout_days.id = exercises.workout_day_id WHERE exercises.id = personal_records.exercise_id AND workout_days.user_id = auth.uid()));
+```
+
+---
+
 ## 🔗 Cross-Routine Shared Exercise History & PR Tracking
 
 In gym routines, the same fundamental exercise (e.g. *"Incline Bench Press"*) may appear in multiple workout days (e.g., both *"Push"* and *"Chest & Back"*). RepStack unifies them seamlessly:
@@ -116,28 +166,20 @@ In gym routines, the same fundamental exercise (e.g. *"Incline Bench Press"*) ma
 
 ## ⚡ State Management Flow (MBI Pattern)
 
-RepStack implements the Model-View-Intent pattern by combining the React **Context API** (`GymTrackerContext.tsx`) and the **useReducer** hook (`gymTrackerReducer.ts`).
+RepStack implements the Model-View-Intent pattern by combining the React **Context API** (`GymTrackerContext.tsx`) and the **useReducer** hook (`gymTrackerReducer.ts`). 
 
-### State Machine Lifecycle
-
-```
-[User Action / Form Submit]
-         ↓
-[API Client Mutator Call (useSupabaseQuery.ts)]
-         ↓
-[Database Writes & Fetch Response]
-         ↓
-[Context Dispatch Action]
-         ↓
-[Reducer State Mutation (gymTrackerReducer.ts)]
-         ↓
-[Global State Re-render Trigger]
+```mermaid
+graph LR
+    Action[User Action] --> Context[GymTrackerContext]
+    Context --> API[useSupabaseQuery Client]
+    API --> Database[(Supabase DB)]
+    Database --> Dispatch[Dispatch Action]
+    Dispatch --> Reducer[gymTrackerReducer]
+    Reducer --> UI[React Component Re-render]
 ```
 
 ### Central Reducer Action Index
-
 All database operations are synchronized locally through these actions in `gymTrackerReducer.ts`:
-
 - `START_LOADING` / `SET_ERROR`: Standard API request cycle handlers.
 - `SET_ALL_DATA`: Invoked on login; hydrates the app state.
 - `ADD_WORKOUT_DAY` / `UPDATE_WORKOUT_DAY` / `DELETE_WORKOUT_DAY`: Handles routines CRUD.
@@ -147,74 +189,36 @@ All database operations are synchronized locally through these actions in `gymTr
 
 ---
 
-## 👶 Contributor Guide: How to Extend the Codebase
+## 🧭 Codebase Study & Learning Roadmap for Junior Developers
 
-### Adding a New Column / Feature (Example: Adding Cardio Duration Tracking)
+Follow this 5-step roadmap to thoroughly understand and master this codebase:
 
-If you need to track cardiovascular duration for exercises, follow these steps:
-
-#### Step 1: Update the Database Schema
-
-Execute the database update in the Supabase SQL editor:
-
-```sql
-ALTER TABLE set_entries ADD COLUMN duration_seconds int4;
+```mermaid
+graph TD
+    Step1["Step 1: Database & Schemas (src/schemas)"] --> Step2["Step 2: API & State Machine (src/hooks & src/reducers)"]
+    Step2 --> Step3["Step 3: Context Provider (src/context)"]
+    Step3 --> Step4["Step 4: Cross-Workout Utils (src/utils)"]
+    Step4 --> Step5["Step 5: Code-Split Views & UI Components (src/pages & src/components)"]
 ```
 
-#### Step 2: Update runtime Zod Schemas
+### 1. Step 1: Database & Schemas (`src/schemas/` & `src/types/`)
+- Read the Zod schemas (`workoutDays.ts`, `exercises.ts`, `sessions.ts`, `setEntries.ts`, `personalRecords.ts`).
+- Understand how database rows are validated at runtime and mapped into strongly typed TypeScript entities.
 
-Edit `src/schemas/setEntries.ts` to expect the new field:
+### 2. Step 2: Database Queries & Pure State Machine (`src/hooks/` & `src/reducers/`)
+- Inspect `src/hooks/useSupabaseQuery.ts`: Study how queries, inserts, and transaction rollbacks are written using the `@supabase/supabase-js` client.
+- Inspect `src/reducers/gymTrackerReducer.ts`: Understand pure state transitions, how arrays are updated immutably, and why state normalization prevents duplicate entity trees.
 
-```typescript
-export const SetEntrySchema = z.object({
-  id: z.number(),
-  session_id: z.number(),
-  exercise_id: z.number(),
-  set_type: z.string(),
-  set_index: z.number(),
-  weight: z.coerce.number().nullable(),
-  reps: z.number().nullable(),
-  duration_seconds: z.number().nullable().optional(), // Added
-});
-```
+### 3. Step 3: Central Context Provider (`src/context/GymTrackerContext.tsx`)
+- Study how the auth lifecycle listener (`supabase.auth.onAuthStateChange`) triggers automatic table hydration on sign-in and resets state on logout.
+- See how action functions (`addWorkoutDay`, `logSession`, etc.) bridge the UI with the query hooks and reducer dispatch.
 
-#### Step 3: Extend Types & Reducer Logic
+### 4. Step 4: Normalization & Math Formulas (`src/utils/exerciseUtils.ts`)
+- Review `normalizeExerciseName` to see how exercises with identical names across different workout days share history.
+- Review `calculate1RM` to understand how the Epley formula (`Weight * (1 + Reps / 30)`) derives estimated One Rep Max numbers.
+- Review `getExerciseProgressionTimeline` to see how chronological data points are generated for SVG graphs.
 
-If the UI state needs to store the duration, edit the `MockExercise` interface in `src/types/mock.ts` and ensure mapper functions in `Dashboard.tsx` and `WorkoutSession.tsx` extract the value.
-
-#### Step 4: Update UI View
-
-Modify the inputs inside `src/components/ExerciseCard.tsx` to conditionally render a stopwatch or duration input field for cardio exercises, and trigger the corresponding input handlers.
-
----
-
-## 🔒 Securing Supabase Rows with RLS policies
-
-Ensure all tables have Row Level Security active so users cannot view other athletes' logs:
-
-1. **For User Owned Tables** (`workout_days`, `sessions`):
-
-   ```sql
-   CREATE POLICY "Users can manage their own data"
-   ON workout_days
-   FOR ALL
-   TO authenticated
-   USING (auth.uid() = user_id)
-   WITH CHECK (auth.uid() = user_id);
-   ```
-
-2. **For Nested Child Tables** (`exercises`, `exercise_set_config`, `set_entries`, `personal_records`):
-   Check authorization by traversing relations, e.g., for `exercises`:
-   ```sql
-   CREATE POLICY "Users can manage exercises in their routines"
-   ON exercises
-   FOR ALL
-   TO authenticated
-   USING (
-     EXISTS (
-       SELECT 1 FROM workout_days
-       WHERE workout_days.id = exercises.workout_day_id
-       AND workout_days.user_id = auth.uid()
-     )
-   );
-   ```
+### 5. Step 5: Routing, Lazy Loading, and UI Components (`src/App.tsx`, `src/pages/`, `src/components/`)
+- Study `src/App.tsx` to understand how `React.lazy()` and `<Suspense fallback={<PageSkeletonLoader />}>` split the application into sub-30kB route chunks.
+- Explore `src/pages/Dashboard.tsx` and `src/components/ExerciseProgressionChart.tsx` to see how SVG paths, linear gradients, and Bento metric grids are rendered with Tailwind CSS tokens.
+- Review `src/components/StatusAlert.tsx`, `ToastNotification.tsx`, and `ConfirmationModal.tsx` to see the unified feedback architecture.

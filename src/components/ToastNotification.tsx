@@ -85,9 +85,7 @@ export function ToastNotification({
                 {title}
               </h4>
             )}
-            <p className="font-body text-xs text-chalk truncate">
-              {message}
-            </p>
+            <p className="font-body text-xs text-chalk truncate">{message}</p>
           </div>
         </div>
 

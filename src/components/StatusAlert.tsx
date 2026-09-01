@@ -1,4 +1,3 @@
-
 export type AlertVariant = "success" | "warning" | "error" | "info";
 
 interface StatusAlertProps {
@@ -33,7 +32,11 @@ export function StatusAlert({
           stroke="currentColor"
           strokeWidth={2.5}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 13l4 4L19 7"
+          />
         </svg>
       ),
     },
@@ -141,8 +144,18 @@ export function StatusAlert({
           aria-label="Dismiss alert"
           className="text-steel hover:text-white transition-colors p-1 rounded cursor-pointer -mr-1 -mt-1 flex-shrink-0"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       )}
