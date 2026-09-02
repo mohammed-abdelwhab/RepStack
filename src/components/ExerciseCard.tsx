@@ -313,8 +313,8 @@ export function ExerciseCard({
           </div>
         </div>
 
-        {/* Edit mode drag handle placeholder */}
-        {isEditMode && (
+        {/* Actions: Edit Drag Handle or Quick Rest Trigger */}
+        {isEditMode ? (
           <div
             className="flex flex-col gap-[3px] mt-1 flex-shrink-0 opacity-50"
             aria-hidden
@@ -328,6 +328,18 @@ export function ExerciseCard({
               />
             ))}
           </div>
+        ) : (
+          onStartTimer && (
+            <button
+              type="button"
+              onClick={onStartTimer}
+              className="flex items-center gap-1 font-mono text-[11px] px-2.5 py-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 text-steel hover:text-[#dfff00] transition-all duration-150 active:scale-95 cursor-pointer border border-white/10 flex-shrink-0"
+              title={`Start rest timer for ${exercise.name}`}
+            >
+              <span>⏱️</span>
+              <span className="font-semibold">Rest</span>
+            </button>
+          )
         )}
       </div>
 

@@ -279,20 +279,29 @@ export default function CreateWorkout() {
             />
           )}
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full font-display font-black uppercase text-sm py-4 rounded transition-all active:scale-[0.98] cursor-pointer mt-4"
-            style={{
-              background: "#dfff00",
-              color: "#000000",
-              boxShadow: "0px 4px 15px rgba(223, 255, 0, 0.15)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {isLoading ? "BUILDING ROUTINE..." : "SAVE ROUTINE"}
-          </button>
+          {/* Action Buttons: Cancel & Submit */}
+          <div className="flex gap-3 mt-4">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="px-5 py-4 rounded-xl font-display font-bold text-xs uppercase bg-zinc-900 border border-white/10 text-steel hover:text-white transition-all active:scale-[0.98] cursor-pointer"
+            >
+              CANCEL
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 font-display font-black uppercase text-sm py-4 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+              style={{
+                background: "#dfff00",
+                color: "#000000",
+                boxShadow: "0px 4px 15px rgba(223, 255, 0, 0.15)",
+                letterSpacing: "0.05em",
+              }}
+            >
+              {isLoading ? "BUILDING ROUTINE..." : "SAVE ROUTINE"}
+            </button>
+          </div>
         </form>
       </main>
     </div>

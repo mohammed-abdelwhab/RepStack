@@ -7,6 +7,7 @@ import { ExerciseCard } from "../components/ExerciseCard";
 import { PRCelebration } from "../components/PRCelebration";
 import { RestTimer } from "../components/RestTimer";
 import { ToastNotification } from "../components/ToastNotification";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 import { soundEffects } from "../utils/audioUtils";
 import type { AlertVariant } from "../components/StatusAlert";
 import {
@@ -35,6 +36,7 @@ export default function WorkoutSession() {
   const [timerVisible, setTimerVisible] = useState(false);
   const [timerDefault, setTimerDefault] = useState(90); // seconds
   const [prToast, setPrToast] = useState<PRToast | null>(null);
+  const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
   const [notification, setNotification] = useState<{
     variant: AlertVariant;
     title?: string;
@@ -247,6 +249,14 @@ export default function WorkoutSession() {
   const handleStartTimer = useCallback(() => {
     setTimerVisible(true);
   }, []);
+
+  const handleConfirmCancel = () => {
+    setIsWorkoutStarted(false);
+    localStorage.removeItem(`repstack_workout_active_${dayId}`);
+    localStorage.removeItem(`repstack_start_${dayId}`);
+    setIsConfirmCancelOpen(false);
+    navigate("/");
+  };
 
   // Log active workout to Supabase
   const handleLogWorkout = async () => {
@@ -599,12 +609,25 @@ export default function WorkoutSession() {
           })}
         </div>
 
-        {/* Log Workout trigger */}
-        <div className="px-4 pb-6 pt-2">
+        {/* Action Buttons: Cancel & Log Workout */}
+        <div className="px-4 pb-6 pt-2 flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsConfirmCancelOpen(true)}
+            className="px-4 py-4 rounded-2xl font-display font-bold text-xs uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex-shrink-0"
+            style={{
+              background: "rgba(255, 49, 49, 0.08)",
+              border: "1px solid rgba(255, 49, 49, 0.25)",
+              color: "#ff3131",
+            }}
+          >
+            ✕ CANCEL
+          </button>
+
           <button
             disabled={isLogged}
             onClick={handleLogWorkout}
-            className="w-full rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer"
+            className="flex-1 rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer"
             style={{
               background: isLogged ? "rgba(255,255,255,0.04)" : "#dfff00",
               color: isLogged ? "#565C66" : "#000000",
@@ -639,6 +662,18 @@ export default function WorkoutSession() {
           onClose={() => setNotification(null)}
         />
       )}
+
+      {/* Cancel Workout Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmCancelOpen}
+        title="Discard Workout Session?"
+        message="Are you sure you want to cancel this workout? Any unsaved weights, reps, and active stopwatch duration will be discarded."
+        confirmText="Discard & Exit"
+        cancelText="Keep Training"
+        isDestructive={true}
+        onConfirm={handleConfirmCancel}
+        onCancel={() => setIsConfirmCancelOpen(false)}
+      />
     </div>
   );
 }

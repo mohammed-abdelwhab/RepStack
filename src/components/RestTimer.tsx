@@ -103,7 +103,7 @@ export function RestTimer({
       role="timer"
       aria-live="polite"
       aria-label={`Rest timer: ${timeDisplay} remaining`}
-      className="fixed inset-x-3 bottom-20 z-50 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-4"
+      className="fixed top-16 left-3 right-3 max-w-lg mx-auto z-50 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 animate-in slide-in-from-top-4"
       style={{
         background: "#161616",
         border: isDone
