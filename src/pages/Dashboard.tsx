@@ -343,13 +343,41 @@ export default function Dashboard() {
           <div className="flex flex-col gap-3">
             {state.workoutDays.length === 0 ? (
               <div
-                className="rounded-xl p-6 text-center text-sm text-steel"
+                className="rounded-2xl p-8 text-center flex flex-col items-center gap-3"
                 style={{
                   background: "#121212",
-                  border: "1px dashed rgba(255,255,255,0.08)",
+                  border: "1px dashed rgba(255, 255, 255, 0.12)",
                 }}
               >
-                No routines found. Build your first workout day!
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-xl"
+                  style={{
+                    background: "rgba(223, 255, 0, 0.08)",
+                    border: "1px solid rgba(223, 255, 0, 0.2)",
+                    color: "#dfff00",
+                  }}
+                >
+                  🏋️
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-sm text-white uppercase">
+                    No Routines Yet
+                  </h3>
+                  <p className="font-body text-xs text-steel mt-1">
+                    Create your custom workout days to begin tracking your sets and personal records.
+                  </p>
+                </div>
+                <Link
+                  to="/workout/new"
+                  className="font-display font-black text-xs uppercase px-5 py-2.5 rounded-xl transition-all active:scale-95 mt-1 cursor-pointer"
+                  style={{
+                    background: "#dfff00",
+                    color: "#000000",
+                    boxShadow: "0 4px 15px rgba(223, 255, 0, 0.15)",
+                  }}
+                >
+                  + CREATE YOUR FIRST ROUTINE
+                </Link>
               </div>
             ) : (
               state.workoutDays.map((day) => {

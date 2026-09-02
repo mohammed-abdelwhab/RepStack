@@ -68,13 +68,7 @@ export function GymTrackerProvider({
 
     dispatch({ type: "START_LOADING" });
     try {
-      let data = await db.fetchUserData(currentUser.id);
-
-      // If user has 0 workout days, seed with defaults to get them started
-      if (data.workoutDays.length === 0) {
-        await db.seedNewUserWorkouts(currentUser.id);
-        data = await db.fetchUserData(currentUser.id);
-      }
+      const data = await db.fetchUserData(currentUser.id);
 
       dispatch({
         type: "SET_ALL_DATA",
