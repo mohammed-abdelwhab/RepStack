@@ -42,6 +42,7 @@ interface GymTrackerContextType {
     dayId: number,
     performedOn: string,
     sets: Omit<SetEntry, "id" | "session_id">[],
+    durationSeconds?: number,
   ) => Promise<void>;
   logout: () => Promise<void>;
   loadData: () => Promise<void>;
@@ -227,6 +228,7 @@ export function GymTrackerProvider({
     dayId: number,
     performedOn: string,
     sets: Omit<SetEntry, "id" | "session_id">[],
+    durationSeconds: number = 0,
   ) => {
     if (!user) return;
     dispatch({ type: "START_LOADING" });
@@ -238,6 +240,7 @@ export function GymTrackerProvider({
         sets,
         state.personalRecords,
         state.exercises,
+        durationSeconds,
       );
       dispatch({ type: "LOG_SESSION", payload: result });
     } catch (err: any) {

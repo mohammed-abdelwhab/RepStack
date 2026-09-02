@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { soundEffects } from "../utils/audioUtils";
 
 interface RestTimerProps {
   defaultSeconds: number;
@@ -6,42 +7,53 @@ interface RestTimerProps {
   onDefaultChange: (seconds: number) => void;
 }
 
-const PRESETS = [30, 60, 90, 120] as const;
-const RADIUS = 42;
+const PRESETS = [30, 60, 90, 120, 180, 300] as const; // 30s, 1m, 1.5m, 2m, 3m, 5m
+const RADIUS = 38;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-const prefersReducedMotion =
-  typeof window !== 'undefined' &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTimerProps) {
+export function RestTimer({
+  defaultSeconds,
+  onClose,
+  onDefaultChange,
+}: RestTimerProps) {
   const [totalSeconds, setTotalSeconds] = useState(defaultSeconds);
   const [remaining, setRemaining] = useState(defaultSeconds);
   const [isRunning, setIsRunning] = useState(true);
   const [isDone, setIsDone] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customVal, setCustomVal] = useState('');
+  const [customVal, setCustomVal] = useState("");
+  const [soundMuted, setSoundMuted] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const flashRef = useRef(false);
 
-  // Start/pause countdown
+  // Sync mute state with soundEffects singleton
+  const toggleSound = () => {
+    soundEffects.soundEnabled = soundMuted;
+    setSoundMuted(!soundMuted);
+  };
+
+  // Countdown cycle
   useEffect(() => {
     if (!isRunning) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
+
     intervalRef.current = setInterval(() => {
       setRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(intervalRef.current!);
           setIsRunning(false);
           setIsDone(true);
+          soundEffects.playRestDoneChime();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [isRunning]);
 
   const reset = useCallback((seconds: number) => {
@@ -50,7 +62,6 @@ export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTime
     setRemaining(seconds);
     setIsDone(false);
     setIsRunning(true);
-    flashRef.current = false;
   }, []);
 
   const handlePreset = (sec: number) => {
@@ -63,7 +74,7 @@ export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTime
     const v = parseInt(customVal, 10);
     if (!isNaN(v) && v > 0 && v <= 3600) {
       handlePreset(v);
-      setCustomVal('');
+      setCustomVal("");
     }
   };
 
@@ -82,96 +93,89 @@ export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTime
 
   const mins = Math.floor(remaining / 60);
   const secs = remaining % 60;
-  const timeDisplay = `${mins > 0 ? `${mins}:` : ''}${String(secs).padStart(mins > 0 ? 2 : 1, '0')}`;
+  const timeDisplay = `${mins > 0 ? `${mins}:` : ""}${String(secs).padStart(mins > 0 ? 2 : 1, "0")}`;
 
-  // Ring color: iron → amber as it approaches 0
-  const pct = progress;
-  const ringColor = isDone
-    ? '#C4622D'
-    : pct > 0.5
-    ? '#C4622D'
-    : pct > 0.2
-    ? '#d97f2e'
-    : '#e8a832';
+  const ringColor = isDone ? "#dfff00" : "#dfff00";
 
   return (
-    /* ── Floating bar anchored above safe-area bottom ─────────────────────── */
     <div
       id="rest-timer-overlay"
       role="timer"
       aria-live="polite"
       aria-label={`Rest timer: ${timeDisplay} remaining`}
-      className="fixed inset-x-3 z-[80] rounded-2xl overflow-hidden"
+      className="fixed inset-x-3 bottom-20 z-50 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 animate-in slide-in-from-bottom-4"
       style={{
-        bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-        background: '#1E2126',
-        border: `1.5px solid ${isDone ? 'rgba(196,98,45,0.6)' : 'rgba(86,92,102,0.25)'}`,
+        background: "#161616",
+        border: isDone
+          ? "1.5px solid #dfff00"
+          : "1px solid rgba(255, 255, 255, 0.12)",
         boxShadow: isDone
-          ? '0 0 20px rgba(196,98,45,0.25), 0 8px 32px rgba(0,0,0,0.5)'
-          : '0 8px 32px rgba(0,0,0,0.5)',
-        transition: prefersReducedMotion ? 'none' : 'box-shadow 400ms, border-color 400ms',
-        animation: !prefersReducedMotion && isDone ? 'pr-pulse 0.6s ease-out' : 'none',
+          ? "0 0 25px rgba(223, 255, 0, 0.3), 0 10px 40px rgba(0,0,0,0.8)"
+          : "0 10px 40px rgba(0,0,0,0.8)",
       }}
     >
-      {/* Progress bar strip at top */}
-      <div style={{ height: 3, background: 'rgba(86,92,102,0.15)' }}>
+      {/* Top progress line */}
+      <div style={{ height: 3, background: "rgba(255, 255, 255, 0.08)" }}>
         <div
           style={{
-            height: '100%',
+            height: "100%",
             width: `${progress * 100}%`,
-            background: ringColor,
-            transition: prefersReducedMotion ? 'none' : 'width 1s linear, background 500ms',
-            borderRadius: '0 2px 2px 0',
+            background: "#dfff00",
+            transition: "width 1s linear",
+            borderRadius: "0 2px 2px 0",
           }}
         />
       </div>
 
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* ── Circular countdown ring ─────────────────────────────────────── */}
-        <div className="flex-shrink-0 relative" style={{ width: 72, height: 72 }}>
-          <svg width="72" height="72" viewBox="0 0 96 96" aria-hidden>
-            {/* Track circle */}
+      <div className="flex items-center gap-3.5 px-4 py-3">
+        {/* ── Circular Countdown Ring ─────────────────────────────────────── */}
+        <div
+          className="flex-shrink-0 relative flex items-center justify-center"
+          style={{ width: 68, height: 68 }}
+        >
+          <svg width="68" height="68" viewBox="0 0 96 96" aria-hidden>
+            {/* Background Track */}
             <circle
-              cx="48" cy="48" r={RADIUS}
+              cx="48"
+              cy="48"
+              r={RADIUS}
               fill="none"
-              stroke="rgba(86,92,102,0.2)"
-              strokeWidth="7"
+              stroke="rgba(255, 255, 255, 0.1)"
+              strokeWidth="6"
             />
-            {/* Progress arc */}
+            {/* Progress Arc */}
             <circle
-              cx="48" cy="48" r={RADIUS}
+              cx="48"
+              cy="48"
+              r={RADIUS}
               fill="none"
               stroke={ringColor}
-              strokeWidth="7"
+              strokeWidth="6"
               strokeLinecap="round"
               strokeDasharray={CIRCUMFERENCE}
               strokeDashoffset={strokeDashoffset}
               transform="rotate(-90 48 48)"
               style={{
-                transition: prefersReducedMotion ? 'none' : 'stroke-dashoffset 1s linear, stroke 500ms',
+                transition: "stroke-dashoffset 1s linear",
               }}
             />
           </svg>
-          {/* Time display centred inside ring */}
-          <div
-            className="absolute inset-0 flex flex-col items-center justify-center"
-          >
+
+          {/* Time Display Centered */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span
-              className="font-display leading-none"
+              className="font-mono leading-none tracking-tight"
               style={{
-                fontSize: remaining >= 60 ? 16 : 22,
-                fontWeight: 700,
-                color: isDone ? '#C4622D' : '#EDEDEA',
-                letterSpacing: '-0.02em',
-                transition: 'color 300ms',
+                fontSize: remaining >= 60 ? 15 : 20,
+                fontWeight: 800,
+                color: isDone ? "#dfff00" : "#ffffff",
               }}
             >
-              {isDone ? '✓' : timeDisplay}
+              {isDone ? "GO!" : timeDisplay}
             </span>
             {!isDone && (
               <span
-                className="font-body leading-none mt-0.5"
-                style={{ fontSize: 8, color: '#565C66', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+                className="font-body text-[8px] font-bold text-steel uppercase mt-0.5 tracking-wider"
               >
                 REST
               </span>
@@ -179,105 +183,93 @@ export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTime
           </div>
         </div>
 
-        {/* ── Controls ─────────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col gap-2 min-w-0">
-          {/* Done state */}
-          {isDone ? (
-            <p
-              className="font-body font-medium"
-              style={{ fontSize: 13, color: '#C4622D', letterSpacing: '-0.01em' }}
-            >
-              Time's up — start your next set!
+        {/* ── Center Controls & Presets ───────────────────────────────────── */}
+        <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+          <div className="flex items-center justify-between">
+            <p className="font-body text-xs font-medium text-steel">
+              {isDone ? (
+                <span className="text-[#dfff00] font-bold">
+                  ✓ Time's up! Ready for next set
+                </span>
+              ) : isRunning ? (
+                "Resting between exercises..."
+              ) : (
+                "Rest paused"
+              )}
             </p>
-          ) : (
-            <p
-              className="font-body"
-              style={{ fontSize: 12, color: '#565C66' }}
-            >
-              {isRunning ? 'Resting…' : 'Paused'}
-            </p>
-          )}
 
-          {/* Preset duration buttons */}
-          <div className="flex gap-1.5 flex-wrap">
+            {/* Sound Mute Toggle */}
+            <button
+              type="button"
+              onClick={toggleSound}
+              className="text-steel hover:text-white text-xs px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+              title={soundMuted ? "Unmute chime" : "Mute chime"}
+            >
+              {soundMuted ? "🔇" : "🔊"}
+            </button>
+          </div>
+
+          {/* Preset Buttons */}
+          <div className="flex gap-1 flex-wrap">
             {PRESETS.map((sec) => {
               const label = sec < 60 ? `${sec}s` : `${sec / 60}m`;
               const isSelected = totalSeconds === sec;
               return (
                 <button
                   key={sec}
-                  id={`timer-preset-${sec}`}
                   onClick={() => handlePreset(sec)}
-                  aria-pressed={isSelected}
-                  className="font-body text-xs rounded-lg transition-all duration-150 active:scale-90 cursor-pointer"
+                  className="font-mono text-xs rounded-md transition-all active:scale-95 cursor-pointer px-2 py-1"
                   style={{
-                    padding: '3px 8px',
-                    background: isSelected ? 'rgba(196,98,45,0.2)' : 'rgba(86,92,102,0.12)',
-                    border: `1px solid ${isSelected ? 'rgba(196,98,45,0.4)' : 'rgba(86,92,102,0.2)'}`,
-                    color: isSelected ? '#C4622D' : '#565C66',
-                    fontSize: 11,
-                    fontWeight: isSelected ? 600 : 400,
+                    background: isSelected
+                      ? "rgba(223, 255, 0, 0.15)"
+                      : "rgba(255, 255, 255, 0.05)",
+                    border: isSelected
+                      ? "1px solid #dfff00"
+                      : "1px solid rgba(255, 255, 255, 0.08)",
+                    color: isSelected ? "#dfff00" : "#9ca3af",
+                    fontWeight: isSelected ? 700 : 500,
                   }}
                 >
                   {label}
                 </button>
               );
             })}
-            {/* Custom button */}
             <button
-              id="timer-custom-btn"
               onClick={() => setShowCustomInput((v) => !v)}
-              className="font-body text-xs rounded-lg transition-all duration-150 active:scale-90 cursor-pointer"
+              className="font-body text-xs rounded-md transition-all active:scale-95 cursor-pointer px-2 py-1"
               style={{
-                padding: '3px 8px',
-                background: showCustomInput ? 'rgba(196,98,45,0.1)' : 'rgba(86,92,102,0.08)',
-                border: `1px solid ${showCustomInput ? 'rgba(196,98,45,0.3)' : 'rgba(86,92,102,0.15)'}`,
-                color: showCustomInput ? '#C4622D' : '#565C66',
-                fontSize: 11,
+                background: showCustomInput
+                  ? "rgba(223, 255, 0, 0.15)"
+                  : "rgba(255, 255, 255, 0.05)",
+                border: showCustomInput
+                  ? "1px solid #dfff00"
+                  : "1px solid rgba(255, 255, 255, 0.08)",
+                color: showCustomInput ? "#dfff00" : "#9ca3af",
               }}
             >
               Custom
             </button>
           </div>
 
-          {/* Custom seconds input */}
+          {/* Custom Input Dropdown */}
           {showCustomInput && (
-            <div className="flex gap-1.5 items-center">
+            <div className="flex gap-1.5 items-center mt-1">
               <input
-                id="timer-custom-input"
                 type="number"
                 inputMode="numeric"
                 min="5"
                 max="3600"
-                placeholder="sec"
+                placeholder="Seconds (e.g. 120)"
                 value={customVal}
                 onChange={(e) => setCustomVal(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleCustomSubmit()}
-                className="font-display text-center rounded-lg"
-                style={{
-                  width: 60,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: '#EDEDEA',
-                  background: 'rgba(86,92,102,0.1)',
-                  border: '1px solid rgba(196,98,45,0.3)',
-                  outline: 'none',
-                  padding: '4px 6px',
-                }}
+                onKeyDown={(e) => e.key === "Enter" && handleCustomSubmit()}
+                className="font-mono text-xs text-center rounded-md bg-black text-white px-2.5 py-1 border border-white/20 focus:border-[#dfff00] outline-none w-28"
                 autoFocus
               />
               <button
-                id="timer-custom-go"
+                type="button"
                 onClick={handleCustomSubmit}
-                className="font-body text-xs rounded-lg transition-all duration-150 active:scale-90 cursor-pointer"
-                style={{
-                  padding: '4px 10px',
-                  background: 'rgba(196,98,45,0.2)',
-                  border: '1px solid rgba(196,98,45,0.4)',
-                  color: '#C4622D',
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
+                className="font-display font-bold text-xs rounded-md bg-[#dfff00] text-black px-2.5 py-1 cursor-pointer"
               >
                 Set
               </button>
@@ -285,56 +277,28 @@ export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTime
           )}
         </div>
 
-        {/* ── Right action buttons ──────────────────────────────────────────── */}
+        {/* ── Right Actions ──────────────────────────────────────────────── */}
         <div className="flex flex-col gap-1.5 flex-shrink-0">
-          {/* +30s */}
           <button
-            id="timer-add-30"
             onClick={handleAddThirty}
-            aria-label="Add 30 seconds"
-            className="font-body text-xs rounded-lg transition-all duration-150 active:scale-90 cursor-pointer"
-            style={{
-              padding: '5px 8px',
-              background: 'rgba(86,92,102,0.12)',
-              border: '1px solid rgba(86,92,102,0.2)',
-              color: '#565C66',
-              fontSize: 11,
-              whiteSpace: 'nowrap',
-            }}
+            title="Add 30 seconds"
+            className="font-mono text-[11px] font-semibold rounded-lg px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-white cursor-pointer border border-white/10"
           >
             +30s
           </button>
-
-          {/* Pause / Resume */}
           <button
-            id="timer-pause-resume"
-            onClick={() => { if (!isDone) setIsRunning((v) => !v); }}
-            aria-label={isRunning ? 'Pause timer' : 'Resume timer'}
-            className="font-body text-xs rounded-lg transition-all duration-150 active:scale-90 cursor-pointer"
-            style={{
-              padding: '5px 8px',
-              background: 'rgba(86,92,102,0.12)',
-              border: '1px solid rgba(86,92,102,0.2)',
-              color: '#565C66',
-              fontSize: 14,
+            onClick={() => {
+              if (!isDone) setIsRunning((v) => !v);
             }}
+            title={isRunning ? "Pause" : "Resume"}
+            className="font-body text-xs rounded-lg px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-white cursor-pointer border border-white/10"
           >
-            {isRunning ? '⏸' : '▶'}
+            {isRunning ? "⏸" : "▶"}
           </button>
-
-          {/* Close */}
           <button
-            id="timer-close"
             onClick={onClose}
-            aria-label="Close rest timer"
-            className="rounded-lg flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer"
-            style={{
-              padding: '5px 8px',
-              background: 'rgba(86,92,102,0.08)',
-              border: '1px solid rgba(86,92,102,0.15)',
-              color: '#565C66',
-              fontSize: 14,
-            }}
+            title="Close rest timer"
+            className="font-body text-xs rounded-lg px-2 py-1 bg-zinc-800/60 hover:bg-zinc-700 text-steel hover:text-white cursor-pointer"
           >
             ✕
           </button>
@@ -343,3 +307,4 @@ export function RestTimer({ defaultSeconds, onClose, onDefaultChange }: RestTime
     </div>
   );
 }
+export default RestTimer;

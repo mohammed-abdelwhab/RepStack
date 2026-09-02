@@ -5,6 +5,7 @@ import { SideDrawer } from "../components/SideDrawer";
 import { BottomTabBar } from "../components/BottomTabBar";
 import { WeeklyDashboardShell } from "../components/WeeklyDashboardShell";
 import { ExerciseProgressionChart } from "../components/ExerciseProgressionChart";
+import { WorkoutHeatmap } from "../components/WorkoutHeatmap";
 import type { WorkoutSession, PREntry, MockDay } from "../types/mock";
 
 export default function Dashboard() {
@@ -364,7 +365,8 @@ export default function Dashboard() {
                     No Routines Yet
                   </h3>
                   <p className="font-body text-xs text-steel mt-1">
-                    Create your custom workout days to begin tracking your sets and personal records.
+                    Create your custom workout days to begin tracking your sets
+                    and personal records.
                   </p>
                 </div>
                 <Link
@@ -433,6 +435,13 @@ export default function Dashboard() {
             )}
           </div>
         </section>
+
+        {/* ── GitHub-Style Training Consistency Heatmap ─────────────────── */}
+        <WorkoutHeatmap
+          sessions={state.sessions}
+          workoutDays={state.workoutDays}
+          setEntries={state.setEntries}
+        />
 
         {/* ── Exercise Performance & PR Progression Chart (Stitch Design) ───── */}
         <ExerciseProgressionChart />

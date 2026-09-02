@@ -220,17 +220,43 @@ export async function logWorkoutSession(
   sets: Omit<SetEntry, "id" | "session_id">[],
   existingPRs: PersonalRecord[],
   allExercises: Exercise[] = [],
+  durationSeconds: number = 0,
 ): Promise<{ session: Session; entries: SetEntry[]; prs: PersonalRecord[] }> {
-  // 1. Insert session
-  const { data: session, error: sessErr } = await supabase
+  // 1. Insert session (defensively handles optional duration_seconds)
+  const sessionPayload: Record<string, any> = {
+    user_id: userId,
+    workout_day_id: dayId,
+    performed_on: performedOn,
+  };
+  if (durationSeconds > 0) {
+    sessionPayload.duration_seconds = durationSeconds;
+  }
+
+  let { data: session, error: sessErr } = await supabase
     .from("sessions")
-    .insert([
-      { user_id: userId, workout_day_id: dayId, performed_on: performedOn },
-    ])
+    .insert([sessionPayload])
     .select()
     .single();
 
-  if (sessErr) throw sessErr;
+  if (sessErr) {
+    // If duration_seconds column doesn't exist yet, retry without it
+    if (
+      sessErr.message?.includes("duration_seconds") ||
+      sessErr.code === "PGRST204" ||
+      sessErr.code === "42703"
+    ) {
+      delete sessionPayload.duration_seconds;
+      const retry = await supabase
+        .from("sessions")
+        .insert([sessionPayload])
+        .select()
+        .single();
+      if (retry.error) throw retry.error;
+      session = retry.data;
+    } else {
+      throw sessErr;
+    }
+  }
 
   // 2. Insert set entries mapped to the session ID
   const entriesToInsert = sets.map((s) => ({

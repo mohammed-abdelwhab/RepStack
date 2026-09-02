@@ -7,6 +7,7 @@ import { ExerciseCard } from "../components/ExerciseCard";
 import { PRCelebration } from "../components/PRCelebration";
 import { RestTimer } from "../components/RestTimer";
 import { ToastNotification } from "../components/ToastNotification";
+import { soundEffects } from "../utils/audioUtils";
 import type { AlertVariant } from "../components/StatusAlert";
 import {
   getLastPerformanceForExercise,
@@ -40,6 +41,56 @@ export default function WorkoutSession() {
     message: string;
   } | null>(null);
   const [isLogged, setIsLogged] = useState(false);
+
+  // ── Workout Live Training Stopwatch State ────────────────────────────────
+  const [isWorkoutStarted, setIsWorkoutStarted] = useState<boolean>(() => {
+    return localStorage.getItem(`repstack_workout_active_${dayId}`) === "true";
+  });
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
+    const savedStart = localStorage.getItem(`repstack_start_${dayId}`);
+    if (savedStart) {
+      const diff = Math.floor((Date.now() - parseInt(savedStart, 10)) / 1000);
+      return diff > 0 ? diff : 0;
+    }
+    return 0;
+  });
+  const [isTimerPaused, setIsTimerPaused] = useState<boolean>(false);
+
+  // Active workout timer tick
+  useEffect(() => {
+    if (!isWorkoutStarted || isTimerPaused) return;
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isWorkoutStarted, isTimerPaused]);
+
+  const handleStartWorkout = () => {
+    setIsWorkoutStarted(true);
+    setIsTimerPaused(false);
+    localStorage.setItem(`repstack_workout_active_${dayId}`, "true");
+    localStorage.setItem(
+      `repstack_start_${dayId}`,
+      String(Date.now() - elapsedSeconds * 1000),
+    );
+  };
+
+  const handleTogglePause = () => {
+    setIsTimerPaused((prev) => !prev);
+  };
+
+  const formatElapsedTime = (totalSecs: number) => {
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
+
+    if (hrs > 0) {
+      return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
 
   // Find current day
   const dbDay = state.workoutDays.find((d) => String(d.id) === dayId);
@@ -233,8 +284,22 @@ export default function WorkoutSession() {
     });
 
     try {
-      await logSession(dbDay.id, performedOn, entriesToSave);
+      const finalDuration = elapsedSeconds;
+      await logSession(dbDay.id, performedOn, entriesToSave, finalDuration);
       setIsLogged(true);
+      setIsWorkoutStarted(false);
+      localStorage.removeItem(`repstack_workout_active_${dayId}`);
+      localStorage.removeItem(`repstack_start_${dayId}`);
+
+      // Play completion chime
+      soundEffects.playWorkoutCompleteChime();
+
+      const durationMinutes = Math.floor(finalDuration / 60);
+      const durationSecondsRemainder = finalDuration % 60;
+      const durationFormatted =
+        durationMinutes > 0
+          ? `${durationMinutes}m ${durationSecondsRemainder}s`
+          : `${durationSecondsRemainder}s`;
 
       // Let's check for any new PRs broken across all routines
       let foundPR: PRToast | null = null;
@@ -285,7 +350,7 @@ export default function WorkoutSession() {
         setNotification({
           variant: "success",
           title: "Workout Logged",
-          message: `${dbDay.name} session saved to history!`,
+          message: `${dbDay.name} completed in ${durationFormatted}! Session saved.`,
         });
       }
 
@@ -412,6 +477,73 @@ export default function WorkoutSession() {
           </button>
         </div>
       </header>
+
+      {/* ── Active Workout Stopwatch & Rest Quick Launch Bar ────────────── */}
+      <div
+        className="px-4 py-2.5 sticky top-[57px] z-30 flex items-center justify-between"
+        style={{
+          background: "rgba(18, 18, 18, 0.95)",
+          backdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          {!isWorkoutStarted ? (
+            <button
+              type="button"
+              onClick={handleStartWorkout}
+              className="font-display font-black text-xs uppercase px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              style={{
+                background: "#dfff00",
+                color: "#000000",
+                boxShadow: "0 0 12px rgba(223, 255, 0, 0.35)",
+              }}
+            >
+              <span>▶</span> START WORKOUT
+            </button>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isTimerPaused ? "bg-amber-400" : "bg-[#dfff00] animate-pulse"
+                  }`}
+                />
+                <span className="font-mono text-sm font-black text-white tracking-wider">
+                  {formatElapsedTime(elapsedSeconds)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleTogglePause}
+                className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-steel hover:text-white transition-colors cursor-pointer border border-white/10"
+                title={isTimerPaused ? "Resume workout timer" : "Pause workout timer"}
+              >
+                {isTimerPaused ? "▶ Resume" : "⏸ Pause"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Rest Timer Trigger */}
+        <button
+          type="button"
+          onClick={() => setTimerVisible((v) => !v)}
+          className="font-mono text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+          style={{
+            background: timerVisible
+              ? "rgba(223, 255, 0, 0.15)"
+              : "rgba(255, 255, 255, 0.05)",
+            border: timerVisible
+              ? "1px solid #dfff00"
+              : "1px solid rgba(255, 255, 255, 0.1)",
+            color: timerVisible ? "#dfff00" : "#e5e2e1",
+          }}
+        >
+          <span>⏱️</span>
+          <span>Rest Timer</span>
+        </button>
+      </div>
 
       {/* Main workout logging */}
       <main
