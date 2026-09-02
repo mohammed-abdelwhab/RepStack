@@ -43,13 +43,19 @@ export function WorkoutHeatmap({
 
   // Aggregate sessions by date
   const activityByDate = useMemo(() => {
-    const map = new Map<string, { count: number; routines: string[]; volume: number; sets: number }>();
+    const map = new Map<
+      string,
+      { count: number; routines: string[]; volume: number; sets: number }
+    >();
 
     sessions.forEach((s) => {
       const dateKey = s.performed_on;
       const dayName =
         workoutDays.find((d) => d.id === s.workout_day_id)?.name || "Workout";
-      const volData = sessionVolumeMap.get(s.id) || { volume: 0, setsCount: 0 };
+      const volData = sessionVolumeMap.get(s.id) || {
+        volume: 0,
+        setsCount: 0,
+      };
 
       const existing = map.get(dateKey) || {
         count: 0,
@@ -122,7 +128,7 @@ export function WorkoutHeatmap({
     yesterday.setDate(now.getDate() - 1);
     const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
 
-    let streakActive =
+    const streakActive =
       (activityByDate.get(todayStr)?.count || 0) > 0 ||
       (activityByDate.get(yesterdayStr)?.count || 0) > 0;
 
@@ -131,7 +137,6 @@ export function WorkoutHeatmap({
         if (day.count > 0) {
           currentStreak++;
         } else {
-          // If today wasn't logged yet, don't break immediately if yesterday was logged
           if (day.dateStr === todayStr) continue;
           break;
         }
@@ -159,7 +164,6 @@ export function WorkoutHeatmap({
     };
   }, [activityByDate, sessions.length]);
 
-  // Color Intensity function
   const getCellStyles = (day: DayActivity) => {
     if (day.count === 0) {
       return {
@@ -186,7 +190,20 @@ export function WorkoutHeatmap({
     };
   };
 
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
 
   return (
     <section
@@ -221,7 +238,8 @@ export function WorkoutHeatmap({
           >
             <span className="text-xs">🔥</span>
             <span className="font-mono text-xs font-bold text-[#dfff00]">
-              {stats.currentStreak} Day{stats.currentStreak === 1 ? "" : "s"} Streak
+              {stats.currentStreak} Day{stats.currentStreak === 1 ? "" : "s"}{" "}
+              Streak
             </span>
           </div>
 
@@ -248,7 +266,6 @@ export function WorkoutHeatmap({
             {weeks.map((week, wIdx) => {
               const firstDay = week[0];
               const dayDate = new Date(firstDay.dateStr);
-              // Show month name when it's the first week of that month
               if (dayDate.getDate() <= 7 && wIdx % 4 === 0) {
                 return (
                   <span
@@ -266,7 +283,6 @@ export function WorkoutHeatmap({
 
           {/* Grid with Day Labels on Left */}
           <div className="flex gap-2 items-start">
-            {/* Day of Week labels (Mon, Wed, Fri) */}
             <div className="flex flex-col justify-between text-[9px] font-mono text-steel/60 pt-0.5 h-[90px] pr-1 select-none">
               <span>Mon</span>
               <span>Wed</span>
@@ -329,9 +345,7 @@ export function WorkoutHeatmap({
             </div>
             {hoveredDay.count > 0 && (
               <div className="flex items-center gap-3 font-mono text-[11px]">
-                <span className="text-steel">
-                  {hoveredDay.totalSets} Sets
-                </span>
+                <span className="text-steel">{hoveredDay.totalSets} Sets</span>
                 <span className="font-bold text-[#dfff00]">
                   {hoveredDay.totalVolume.toLocaleString()} kg volume
                 </span>

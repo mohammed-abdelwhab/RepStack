@@ -101,6 +101,7 @@ export default function Dashboard() {
       dayName: day?.name || "Workout",
       date: s.performed_on,
       totalVolume,
+      durationSeconds: s.duration_seconds,
     };
   });
 

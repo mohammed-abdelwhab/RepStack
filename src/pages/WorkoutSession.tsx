@@ -506,7 +506,9 @@ export default function WorkoutSession() {
               <div className="flex items-center gap-1.5">
                 <span
                   className={`w-2 h-2 rounded-full ${
-                    isTimerPaused ? "bg-amber-400" : "bg-[#dfff00] animate-pulse"
+                    isTimerPaused
+                      ? "bg-amber-400"
+                      : "bg-[#dfff00] animate-pulse"
                   }`}
                 />
                 <span className="font-mono text-sm font-black text-white tracking-wider">
@@ -517,7 +519,9 @@ export default function WorkoutSession() {
                 type="button"
                 onClick={handleTogglePause}
                 className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-steel hover:text-white transition-colors cursor-pointer border border-white/10"
-                title={isTimerPaused ? "Resume workout timer" : "Pause workout timer"}
+                title={
+                  isTimerPaused ? "Resume workout timer" : "Pause workout timer"
+                }
               >
                 {isTimerPaused ? "▶ Resume" : "⏸ Pause"}
               </button>

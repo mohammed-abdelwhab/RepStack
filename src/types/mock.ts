@@ -35,4 +35,5 @@ export interface WorkoutSession {
   dayName: string; // denormalized label e.g. "Push"
   date: string; // ISO date string e.g. "2026-08-02"
   totalVolume: number; // sum(weight × reps) across all working sets
+  durationSeconds?: number | null;
 }
