@@ -1,11 +1,11 @@
-// Exact interfaces as specified — do not modify shape
 export interface MockExercise {
   id: string;
   name: string;
   notes: string;
   imageUrl: string | null;
-  warmup: { weight: number | null; reps: number | null };
-  workingSets: { weight: number | null; reps: number | null }[];
+  warmup: { weight: number | null; reps: number | null; isCompleted?: boolean };
+  workingSets: { weight: number | null; reps: number | null; isCompleted?: boolean }[];
+  isCompleted?: boolean;
 }
 
 export interface MockDay {

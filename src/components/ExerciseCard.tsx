@@ -21,16 +21,25 @@ interface ExerciseCardProps {
   onAddSet: (exerciseId: string) => void;
   onRemoveSet: (exerciseId: string, setIndex: number) => void;
   onNotesChange?: (exerciseId: string, notes: string) => void;
-  onStartTimer?: () => void;
+  onToggleSetComplete?: (
+    exerciseId: string,
+    setIndex: number,
+    isWarmup?: boolean,
+  ) => void;
+  onToggleExerciseComplete?: (exerciseId: string) => void;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SetColumnHeader() {
+function SetColumnHeader({ isEditMode }: { isEditMode: boolean }) {
   return (
     <div
-      className="grid gap-2 mb-1 px-3"
-      style={{ gridTemplateColumns: "28px 1fr 1fr 28px" }}
+      className="grid gap-2 mb-1 px-3 items-center"
+      style={{
+        gridTemplateColumns: isEditMode
+          ? "24px 1fr 1fr 34px 22px"
+          : "24px 1fr 1fr 34px",
+      }}
     >
       <span className="font-body text-[10px] tracking-widest uppercase text-steel/60 text-center">
         #
@@ -41,7 +50,10 @@ function SetColumnHeader() {
       <span className="font-body text-[10px] tracking-widest uppercase text-steel/60 text-center">
         reps
       </span>
-      <span />
+      <span className="font-body text-[10px] tracking-widest uppercase text-steel/60 text-center">
+        ✓
+      </span>
+      {isEditMode && <span />}
     </div>
   );
 }
@@ -50,10 +62,12 @@ interface SetRowProps {
   index: number;
   weight: number | null;
   reps: number | null;
+  isCompleted?: boolean;
   isWarmup?: boolean;
   isEditMode: boolean;
   onWeightChange: (val: number | null) => void;
   onRepsChange: (val: number | null) => void;
+  onToggleComplete?: () => void;
   onRemove?: () => void;
 }
 
@@ -61,18 +75,29 @@ function SetRow({
   index,
   weight,
   reps,
+  isCompleted = false,
   isWarmup = false,
   isEditMode,
   onWeightChange,
   onRepsChange,
+  onToggleComplete,
   onRemove,
 }: SetRowProps) {
   return (
     <div
-      className="grid gap-2 items-center px-3 py-1.5 rounded-lg transition-colors duration-150 group/row"
+      className="grid gap-2 items-center px-3 py-1.5 rounded-lg transition-all duration-150 group/row"
       style={{
-        gridTemplateColumns: "28px 1fr 1fr 28px",
-        background: isWarmup ? "rgba(86,92,102,0.08)" : "rgba(86,92,102,0.04)",
+        gridTemplateColumns: isEditMode
+          ? "24px 1fr 1fr 34px 22px"
+          : "24px 1fr 1fr 34px",
+        background: isCompleted
+          ? "rgba(223, 255, 0, 0.08)"
+          : isWarmup
+            ? "rgba(86,92,102,0.08)"
+            : "rgba(86,92,102,0.04)",
+        border: isCompleted
+          ? "1px solid rgba(223, 255, 0, 0.3)"
+          : "1px solid transparent",
       }}
     >
       {/* Set number / warmup badge */}
@@ -80,8 +105,8 @@ function SetRow({
         className="font-display text-center leading-none"
         style={{
           fontSize: isWarmup ? 10 : 14,
-          color: isWarmup ? "#565C66" : "#EDEDEA",
-          fontWeight: isWarmup ? 400 : 500,
+          color: isCompleted ? "#dfff00" : isWarmup ? "#565C66" : "#EDEDEA",
+          fontWeight: isCompleted || !isWarmup ? 600 : 400,
           letterSpacing: isWarmup ? "0.04em" : 0,
         }}
         aria-label={isWarmup ? "Warmup set" : `Set ${index + 1}`}
@@ -105,14 +130,18 @@ function SetRow({
           placeholder="—"
           aria-label={`${isWarmup ? "Warmup" : `Set ${index + 1}`} weight in kg`}
           readOnly={!isEditMode}
-          className="w-full text-center rounded-md border transition-all duration-150 font-display"
+          className={`w-full text-center rounded-md border transition-all duration-150 font-display ${
+            isCompleted ? "line-through opacity-90 text-[#dfff00]" : ""
+          }`}
           style={{
-            fontSize: isWarmup ? 16 : 22,
+            fontSize: isWarmup ? 16 : 20,
             fontWeight: isWarmup ? 400 : 600,
-            color: isWarmup ? "#565C66" : "#EDEDEA",
+            color: isCompleted ? "#dfff00" : isWarmup ? "#565C66" : "#EDEDEA",
             background: "transparent",
             border: isEditMode
-              ? "1px solid rgba(223, 255, 0, 0.35)"
+              ? isCompleted
+                ? "1px solid rgba(223, 255, 0, 0.4)"
+                : "1px solid rgba(223, 255, 0, 0.25)"
               : "1px solid transparent",
             outline: "none",
             padding: "2px 4px",
@@ -127,7 +156,9 @@ function SetRow({
           }}
           onBlur={(e) => {
             e.target.style.border = isEditMode
-              ? "1px solid rgba(223, 255, 0, 0.35)"
+              ? isCompleted
+                ? "1px solid rgba(223, 255, 0, 0.4)"
+                : "1px solid rgba(223, 255, 0, 0.25)"
               : "1px solid transparent";
             e.target.style.boxShadow = "none";
           }}
@@ -151,14 +182,18 @@ function SetRow({
           placeholder="—"
           aria-label={`${isWarmup ? "Warmup" : `Set ${index + 1}`} reps`}
           readOnly={!isEditMode}
-          className="w-full text-center rounded-md transition-all duration-150 font-display"
+          className={`w-full text-center rounded-md transition-all duration-150 font-display ${
+            isCompleted ? "line-through opacity-90 text-[#dfff00]" : ""
+          }`}
           style={{
-            fontSize: isWarmup ? 16 : 22,
+            fontSize: isWarmup ? 16 : 20,
             fontWeight: isWarmup ? 400 : 600,
-            color: isWarmup ? "#565C66" : "#EDEDEA",
+            color: isCompleted ? "#dfff00" : isWarmup ? "#565C66" : "#EDEDEA",
             background: "transparent",
             border: isEditMode
-              ? "1px solid rgba(223, 255, 0, 0.35)"
+              ? isCompleted
+                ? "1px solid rgba(223, 255, 0, 0.4)"
+                : "1px solid rgba(223, 255, 0, 0.25)"
               : "1px solid transparent",
             outline: "none",
             padding: "2px 4px",
@@ -173,33 +208,76 @@ function SetRow({
           }}
           onBlur={(e) => {
             e.target.style.border = isEditMode
-              ? "1px solid rgba(223, 255, 0, 0.35)"
+              ? isCompleted
+                ? "1px solid rgba(223, 255, 0, 0.4)"
+                : "1px solid rgba(223, 255, 0, 0.25)"
               : "1px solid transparent";
             e.target.style.boxShadow = "none";
           }}
         />
       </div>
 
-      {/* Remove button (edit mode only) */}
+      {/* Completion Checkbox Button */}
       <div className="flex items-center justify-center">
-        {isEditMode && !isWarmup && onRemove && (
+        {isEditMode ? (
           <button
-            id={`remove-set-${index}`}
-            onClick={onRemove}
-            aria-label={`Remove set ${index + 1}`}
-            className="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer"
+            type="button"
+            onClick={onToggleComplete}
+            aria-label={isCompleted ? "Mark set incomplete" : "Mark set complete"}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer"
             style={{
-              background: "rgba(196,98,45,0.12)",
-              border: "1px solid rgba(196,98,45,0.25)",
-              color: "#C4622D",
-              fontSize: 14,
-              lineHeight: 1,
+              background: isCompleted
+                ? "#dfff00"
+                : "rgba(255, 255, 255, 0.05)",
+              border: isCompleted
+                ? "1px solid #dfff00"
+                : "1px solid rgba(255, 255, 255, 0.15)",
+              color: isCompleted ? "#000000" : "#565C66",
+              boxShadow: isCompleted
+                ? "0 0 10px rgba(223, 255, 0, 0.4)"
+                : "none",
             }}
           >
-            −
+            {isCompleted ? (
+              <span className="font-black text-xs text-black leading-none">✓</span>
+            ) : (
+              <span className="text-[10px] text-steel">○</span>
+            )}
           </button>
+        ) : (
+          <span
+            className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+            style={{
+              color: isCompleted ? "#dfff00" : "rgba(255, 255, 255, 0.2)",
+            }}
+          >
+            {isCompleted ? "✓" : "—"}
+          </span>
         )}
       </div>
+
+      {/* Remove button (edit mode only) */}
+      {isEditMode && (
+        <div className="flex items-center justify-center">
+          {!isWarmup && onRemove ? (
+            <button
+              id={`remove-set-${index}`}
+              type="button"
+              onClick={onRemove}
+              aria-label={`Remove set ${index + 1}`}
+              className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer text-steel hover:text-red-400"
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                fontSize: 11,
+              }}
+            >
+              ✕
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -209,25 +287,36 @@ function SetRow({
 export function ExerciseCard({
   exercise,
   isEditMode,
+  globalPR,
+  lastPerformance,
   onSetChange,
   onAddSet,
   onRemoveSet,
   onNotesChange,
-  onStartTimer,
-  globalPR,
-  lastPerformance,
+  onToggleSetComplete,
+  onToggleExerciseComplete,
 }: ExerciseCardProps) {
   const [warmupOpen, setWarmupOpen] = useState(false);
   const hasWarmup =
     exercise.warmup.weight !== null || exercise.warmup.reps !== null;
 
+  // Exercise is considered complete if explicitly flagged or all working sets are marked complete
+  const allWorkingSetsCompleted =
+    exercise.workingSets.length > 0 &&
+    exercise.workingSets.every((s) => s.isCompleted);
+  const isExerciseDone = exercise.isCompleted || allWorkingSetsCompleted;
+
   return (
     <article
-      className="rounded-2xl overflow-hidden transition-transform duration-150"
+      className="rounded-2xl overflow-hidden transition-all duration-150"
       style={{
         background: "#121212",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+        border: isExerciseDone
+          ? "1.5px solid rgba(223, 255, 0, 0.35)"
+          : "1px solid rgba(255, 255, 255, 0.08)",
+        boxShadow: isExerciseDone
+          ? "0 0 16px rgba(223, 255, 0, 0.08), 0 4px 16px rgba(0,0,0,0.4)"
+          : "0 4px 16px rgba(0,0,0,0.4)",
       }}
       aria-label={`Exercise: ${exercise.name}`}
     >
@@ -256,12 +345,21 @@ export function ExerciseCard({
       {/* ── Card header ───────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <div className="flex-1 min-w-0">
-          <h2
-            className="font-display font-bold text-chalk leading-tight truncate text-base"
-            style={{ letterSpacing: "-0.01em" }}
-          >
-            {exercise.name}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2
+              className={`font-display font-bold text-chalk leading-tight truncate text-base ${
+                isExerciseDone ? "line-through text-[#dfff00]" : ""
+              }`}
+              style={{ letterSpacing: "-0.01em" }}
+            >
+              {exercise.name}
+            </h2>
+            {isExerciseDone && (
+              <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-[#dfff00]/15 text-[#dfff00] font-black border border-[#dfff00]/30 flex-shrink-0">
+                DONE ✓
+              </span>
+            )}
+          </div>
 
           {/* Indicators Row */}
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
@@ -313,33 +411,25 @@ export function ExerciseCard({
           </div>
         </div>
 
-        {/* Actions: Edit Drag Handle or Quick Rest Trigger */}
-        {isEditMode ? (
-          <div
-            className="flex flex-col gap-[3px] mt-1 flex-shrink-0 opacity-50"
-            aria-hidden
-            title="Drag to reorder"
+        {/* Header Action: Mark Exercise Done Toggle in Live Mode */}
+        {isEditMode && onToggleExerciseComplete && (
+          <button
+            type="button"
+            onClick={() => onToggleExerciseComplete(exercise.id)}
+            className="flex items-center gap-1 font-mono text-[11px] px-2.5 py-1.5 rounded-lg transition-all duration-150 active:scale-95 cursor-pointer flex-shrink-0"
+            style={{
+              background: isExerciseDone
+                ? "#dfff00"
+                : "rgba(255, 255, 255, 0.05)",
+              border: isExerciseDone
+                ? "1px solid #dfff00"
+                : "1px solid rgba(255, 255, 255, 0.12)",
+              color: isExerciseDone ? "#000000" : "#e5e2e1",
+              fontWeight: isExerciseDone ? 800 : 500,
+            }}
           >
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="block rounded-full"
-                style={{ width: 18, height: 2, background: "#565C66" }}
-              />
-            ))}
-          </div>
-        ) : (
-          onStartTimer && (
-            <button
-              type="button"
-              onClick={onStartTimer}
-              className="flex items-center gap-1 font-mono text-[11px] px-2.5 py-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 text-steel hover:text-[#dfff00] transition-all duration-150 active:scale-95 cursor-pointer border border-white/10 flex-shrink-0"
-              title={`Start rest timer for ${exercise.name}`}
-            >
-              <span>⏱️</span>
-              <span className="font-semibold">Rest</span>
-            </button>
-          )
+            <span>{isExerciseDone ? "✓ Completed" : "Mark Done"}</span>
+          </button>
         )}
       </div>
 
@@ -397,6 +487,7 @@ export function ExerciseCard({
         <div className="px-3 mb-2">
           <button
             id={`warmup-toggle-${exercise.id}`}
+            type="button"
             onClick={() => setWarmupOpen((v) => !v)}
             aria-expanded={warmupOpen}
             aria-controls={`warmup-${exercise.id}`}
@@ -428,11 +519,12 @@ export function ExerciseCard({
 
           {warmupOpen && (
             <div id={`warmup-${exercise.id}`} className="mt-1">
-              <SetColumnHeader />
+              <SetColumnHeader isEditMode={isEditMode} />
               <SetRow
                 index={0}
                 weight={exercise.warmup.weight}
                 reps={exercise.warmup.reps}
+                isCompleted={exercise.warmup.isCompleted}
                 isWarmup
                 isEditMode={isEditMode}
                 onWeightChange={(v) =>
@@ -451,6 +543,9 @@ export function ExerciseCard({
                     isWarmup: true,
                   })
                 }
+                onToggleComplete={() =>
+                  onToggleSetComplete?.(exercise.id, 0, true)
+                }
               />
             </div>
           )}
@@ -459,13 +554,14 @@ export function ExerciseCard({
 
       {/* ── Working sets ──────────────────────────────────────────────────── */}
       <div className="px-3 pb-2 flex flex-col gap-1">
-        <SetColumnHeader />
+        <SetColumnHeader isEditMode={isEditMode} />
         {exercise.workingSets.map((set, i) => (
           <SetRow
             key={i}
             index={i}
             weight={set.weight}
             reps={set.reps}
+            isCompleted={set.isCompleted}
             isEditMode={isEditMode}
             onWeightChange={(v) =>
               onSetChange(exercise.id, {
@@ -477,6 +573,7 @@ export function ExerciseCard({
             onRepsChange={(v) =>
               onSetChange(exercise.id, { setIndex: i, field: "reps", value: v })
             }
+            onToggleComplete={() => onToggleSetComplete?.(exercise.id, i, false)}
             onRemove={() => onRemoveSet(exercise.id, i)}
           />
         ))}
@@ -532,3 +629,5 @@ export function ExerciseCard({
     </article>
   );
 }
+
+export default ExerciseCard;
