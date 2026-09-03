@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
 import { SideDrawer } from "../components/SideDrawer";
-import { BottomTabBar } from "../components/BottomTabBar";
 import { ExerciseCard } from "../components/ExerciseCard";
 import { ToastNotification } from "../components/ToastNotification";
 import { ConfirmationModal } from "../components/ConfirmationModal";
@@ -424,7 +423,7 @@ export default function WorkoutSession() {
     );
   }
 
-  // Mapped list for Drawer/BottomTabs
+  // Mapped list for Drawer
   const mappedDays: MockDay[] = state.workoutDays.map((d) => ({
     id: String(d.id),
     name: d.name,
@@ -510,6 +509,20 @@ export default function WorkoutSession() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => navigate("/")}
+            title="Go to Dashboard"
+            className="flex items-center gap-1 font-body font-semibold text-xs px-2.5 py-1.5 rounded transition-all cursor-pointer"
+            style={{
+              background: "rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              color: "#e5e2e1",
+            }}
+          >
+            <span>📊</span>
+            <span className="hidden sm:inline">Dashboard</span>
+          </button>
+
+          <button
             onClick={() => navigate(`/workout/${dayId}/edit`)}
             className="font-body font-semibold text-xs px-2.5 py-1.5 rounded transition-all cursor-pointer"
             style={{
@@ -518,36 +531,70 @@ export default function WorkoutSession() {
               color: "#e5e2e1",
             }}
           >
-            Edit Routine
+            Edit
           </button>
         </div>
       </header>
 
       {/* Main workout content */}
-      <main className="flex-1 overflow-y-auto pb-28">
-        {/* Title details */}
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-          <div>
-            <h2 className="font-display font-black text-2xl text-white">
-              {dbDay.name}
-            </h2>
-            <p className="font-body text-xs text-steel mt-0.5">
-              {draftExercises.length} exercise
-              {draftExercises.length === 1 ? "" : "s"} listed
-            </p>
-          </div>
+      <main
+        className="flex-1 overflow-y-auto"
+        style={{
+          paddingBottom: isWorkoutStarted ? "100px" : "32px",
+        }}
+      >
+        {/* Top Header / Start Workout Banner */}
+        {!isWorkoutStarted ? (
+          <div className="px-4 pt-4 pb-2 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-black text-2xl text-white">
+                  {dbDay.name}
+                </h2>
+                <p className="font-body text-xs text-steel mt-0.5">
+                  {draftExercises.length} exercise
+                  {draftExercises.length === 1 ? "" : "s"} listed
+                </p>
+              </div>
 
-          {!isWorkoutStarted ? (
-            <span
-              className="font-mono text-[10px] px-2.5 py-1 rounded-md text-steel"
+              <span
+                className="font-mono text-[10px] px-2.5 py-1 rounded-md text-steel"
+                style={{
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                }}
+              >
+                👁️ View Only
+              </span>
+            </div>
+
+            {/* Prominent TOP Start Workout Button */}
+            <button
+              type="button"
+              onClick={handleStartWorkout}
+              className="w-full rounded-2xl py-3.5 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 shadow-xl"
               style={{
-                background: "rgba(255, 255, 255, 0.04)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
+                background: "#dfff00",
+                color: "#000000",
+                boxShadow: "0px 6px 20px rgba(223, 255, 0, 0.25)",
+                letterSpacing: "0.05em",
               }}
             >
-              👁️ View Only
-            </span>
-          ) : (
+              <span>▶</span> START {dbDay.name.toUpperCase()} WORKOUT
+            </button>
+          </div>
+        ) : (
+          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div>
+              <h2 className="font-display font-black text-2xl text-white">
+                {dbDay.name}
+              </h2>
+              <p className="font-body text-xs text-steel mt-0.5">
+                {draftExercises.length} exercise
+                {draftExercises.length === 1 ? "" : "s"} in session
+              </p>
+            </div>
+
             <span
               className="font-mono text-[10px] px-2.5 py-1 rounded-md text-[#dfff00] font-bold"
               style={{
@@ -557,8 +604,8 @@ export default function WorkoutSession() {
             >
               ● LIVE SESSION
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Exercises */}
         <div className="flex flex-col gap-4 px-4 pb-4 mt-2">
@@ -593,29 +640,20 @@ export default function WorkoutSession() {
           })}
         </div>
 
-        {/* Action Area: Start Workout (View Mode) OR Cancel & Log Workout (Live Training Mode) */}
-        {!isWorkoutStarted ? (
-          <div className="px-4 pb-6 pt-2">
-            <button
-              type="button"
-              onClick={handleStartWorkout}
-              className="w-full rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 shadow-xl"
-              style={{
-                background: "#dfff00",
-                color: "#000000",
-                boxShadow: "0px 6px 20px rgba(223, 255, 0, 0.25)",
-                letterSpacing: "0.05em",
-              }}
-            >
-              <span>▶</span> START {dbDay.name.toUpperCase()} WORKOUT
-            </button>
-          </div>
-        ) : (
-          <div className="px-4 pb-6 pt-2 flex items-center gap-2.5">
+        {/* Bottom Bar in Live Training Mode */}
+        {isWorkoutStarted && (
+          <div
+            className="fixed bottom-0 left-0 right-0 z-40 px-4 py-3 flex items-center gap-2.5"
+            style={{
+              background: "rgba(18, 18, 18, 0.95)",
+              backdropFilter: "blur(12px)",
+              borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+            }}
+          >
             <button
               type="button"
               onClick={() => setIsConfirmCancelOpen(true)}
-              className="px-4 py-4 rounded-2xl font-display font-bold text-xs uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex-shrink-0"
+              className="px-4 py-3.5 rounded-xl font-display font-bold text-xs uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex-shrink-0"
               style={{
                 background: "rgba(255, 49, 49, 0.08)",
                 border: "1px solid rgba(255, 49, 49, 0.25)",
@@ -628,7 +666,7 @@ export default function WorkoutSession() {
             <button
               disabled={isLogged}
               onClick={handleLogWorkout}
-              className="flex-1 rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-xl"
+              className="flex-1 rounded-xl py-3.5 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-xl"
               style={{
                 background: isLogged ? "rgba(255,255,255,0.04)" : "#dfff00",
                 color: isLogged ? "#565C66" : "#000000",
@@ -644,16 +682,6 @@ export default function WorkoutSession() {
           </div>
         )}
       </main>
-
-      {/* Tabs */}
-      <BottomTabBar
-        days={mappedDays}
-        activeDay={dayId || ""}
-        activeIsStats={false}
-        onDayChange={(id) => navigate(`/workout/${id}`)}
-        onStatsOpen={() => navigate("/")}
-        statsTab={{ id: "stats", name: "Stats" }}
-      />
 
       {/* Reusable Toast Notification */}
       {notification && (

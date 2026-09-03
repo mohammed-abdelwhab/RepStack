@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
 import { SideDrawer } from "../components/SideDrawer";
-import { BottomTabBar } from "../components/BottomTabBar";
 import { WeeklyDashboardShell } from "../components/WeeklyDashboardShell";
 import { ExerciseProgressionChart } from "../components/ExerciseProgressionChart";
 import { WorkoutHeatmap } from "../components/WorkoutHeatmap";
@@ -450,16 +449,6 @@ export default function Dashboard() {
         {/* Volume Charts and History Feed */}
         <WeeklyDashboardShell sessions={mappedSessions} prFeed={mappedPRFeed} />
       </main>
-
-      {/* ── Bottom Nav Tab Bar ────────────────────────────────────────────── */}
-      <BottomTabBar
-        days={mappedDays}
-        activeDay=""
-        activeIsStats={true}
-        onDayChange={(id) => navigate(`/workout/${id}`)}
-        onStatsOpen={() => navigate("/")}
-        statsTab={{ id: "stats", name: "Stats" }}
-      />
     </div>
   );
 }

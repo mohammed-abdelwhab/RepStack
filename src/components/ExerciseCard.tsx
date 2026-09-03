@@ -223,12 +223,12 @@ function SetRow({
           <button
             type="button"
             onClick={onToggleComplete}
-            aria-label={isCompleted ? "Mark set incomplete" : "Mark set complete"}
+            aria-label={
+              isCompleted ? "Mark set incomplete" : "Mark set complete"
+            }
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer"
             style={{
-              background: isCompleted
-                ? "#dfff00"
-                : "rgba(255, 255, 255, 0.05)",
+              background: isCompleted ? "#dfff00" : "rgba(255, 255, 255, 0.05)",
               border: isCompleted
                 ? "1px solid #dfff00"
                 : "1px solid rgba(255, 255, 255, 0.15)",
@@ -239,7 +239,9 @@ function SetRow({
             }}
           >
             {isCompleted ? (
-              <span className="font-black text-xs text-black leading-none">✓</span>
+              <span className="font-black text-xs text-black leading-none">
+                ✓
+              </span>
             ) : (
               <span className="text-[10px] text-steel">○</span>
             )}
@@ -610,7 +612,9 @@ export function ExerciseCard({
             onRepsChange={(v) =>
               onSetChange(exercise.id, { setIndex: i, field: "reps", value: v })
             }
-            onToggleComplete={() => onToggleSetComplete?.(exercise.id, i, false)}
+            onToggleComplete={() =>
+              onToggleSetComplete?.(exercise.id, i, false)
+            }
             onRemove={() => onRemoveSet(exercise.id, i)}
           />
         ))}

@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { MockDay, WorkoutSession } from "../types/mock";
 
 interface SideDrawerProps {
@@ -34,12 +35,16 @@ export function SideDrawer({
   onDayChange,
   onClose,
 }: SideDrawerProps) {
+  const navigate = useNavigate();
+
   // Last session for each day
   const lastSessionByDay = (dayId: string): WorkoutSession | undefined => {
     return sessions
       .filter((s) => s.dayId === dayId)
       .sort((a, b) => b.date.localeCompare(a.date))[0];
   };
+
+  const isDashboardActive = !activeDayId || activeDayId === "dashboard";
 
   return (
     <>
@@ -65,7 +70,7 @@ export function SideDrawer({
         aria-hidden={!isOpen}
         className="fixed top-0 left-0 bottom-0 z-[60] flex flex-col"
         style={{
-          width: "min(80vw, 300px)",
+          width: "min(82vw, 310px)",
           background: "#121212",
           borderRight: "1px solid rgba(255, 255, 255, 0.08)",
           boxShadow: isOpen ? "8px 0 40px rgba(0,0,0,0.6)" : "none",
@@ -83,18 +88,12 @@ export function SideDrawer({
         >
           <div className="flex items-center gap-2">
             <span style={{ fontSize: 20 }} aria-hidden>
-              🏋️
+              ⚡
             </span>
             <span
-              className="font-display"
-              style={{
-                fontSize: 15,
-                fontWeight: 900,
-                color: "#white",
-                letterSpacing: "0.06em",
-              }}
+              className="font-display font-black text-sm text-white tracking-wider"
             >
-              MY WORKOUTS
+              REPSTACK MENU
             </span>
           </div>
           <button
@@ -113,9 +112,61 @@ export function SideDrawer({
           </button>
         </div>
 
+        {/* ── Drawer Main Links ──────────────────────────────────────────── */}
+        <div className="px-2 pt-3 pb-1">
+          {/* Main Dashboard Navigation Item */}
+          <button
+            id="drawer-nav-dashboard"
+            onClick={() => {
+              navigate("/");
+              onClose();
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 active:scale-[0.98] cursor-pointer"
+            style={{
+              background: isDashboardActive
+                ? "rgba(223, 255, 0, 0.12)"
+                : "rgba(255, 255, 255, 0.03)",
+              border: isDashboardActive
+                ? "1px solid #dfff00"
+                : "1px solid rgba(255, 255, 255, 0.08)",
+              textAlign: "left",
+            }}
+          >
+            <span
+              className="flex-shrink-0 flex items-center justify-center rounded-xl"
+              style={{
+                width: 38,
+                height: 38,
+                background: isDashboardActive
+                  ? "#dfff00"
+                  : "rgba(255, 255, 255, 0.05)",
+                color: isDashboardActive ? "#000000" : "#e5e2e1",
+                fontSize: 18,
+              }}
+              aria-hidden
+            >
+              📊
+            </span>
+            <div className="flex-1 min-w-0">
+              <span
+                className="font-display font-bold text-sm block"
+                style={{ color: isDashboardActive ? "#dfff00" : "#ffffff" }}
+              >
+                Dashboard & Stats
+              </span>
+              <p className="font-body text-[10px] text-steel mt-0.5">
+                Overview, Volume & Heatmap
+              </p>
+            </div>
+            {isDashboardActive && (
+              <span style={{ color: "#dfff00", fontSize: 12 }}>▶</span>
+            )}
+          </button>
+        </div>
+
         {/* ── Section label ─────────────────────────────────────────────── */}
         <p
-          className="font-body px-4 pt-4 pb-2"
+          className="font-body px-4 pt-4 pb-2 font-semibold"
           style={{
             fontSize: 10,
             color: "#565C66",
@@ -123,12 +174,12 @@ export function SideDrawer({
             letterSpacing: "0.12em",
           }}
         >
-          Training Days
+          Workout Routines ({days.length})
         </p>
 
         {/* ── Day list ──────────────────────────────────────────────────── */}
         <ul
-          className="flex flex-col px-2 gap-0.5 flex-1 overflow-y-auto"
+          className="flex flex-col px-2 gap-1 flex-1 overflow-y-auto"
           role="list"
         >
           {days.map((day, index) => {
@@ -159,8 +210,8 @@ export function SideDrawer({
                   <span
                     className="flex-shrink-0 flex items-center justify-center rounded-xl"
                     style={{
-                      width: 40,
-                      height: 40,
+                      width: 38,
+                      height: 38,
                       background: isActive
                         ? "rgba(223, 255, 0, 0.12)"
                         : "rgba(255, 255, 255, 0.04)",
@@ -223,7 +274,31 @@ export function SideDrawer({
             );
           })}
         </ul>
+
+        {/* ── Bottom Quick Action ───────────────────────────────────────── */}
+        <div
+          className="p-3 mt-auto"
+          style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}
+        >
+          <button
+            onClick={() => {
+              navigate("/workout/create");
+              onClose();
+            }}
+            className="w-full py-3 rounded-xl font-display font-bold text-xs uppercase flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+            style={{
+              background: "rgba(223, 255, 0, 0.08)",
+              border: "1px solid rgba(223, 255, 0, 0.3)",
+              color: "#dfff00",
+            }}
+          >
+            <span>+</span>
+            <span>Create New Routine</span>
+          </button>
+        </div>
       </nav>
     </>
   );
 }
+
+export default SideDrawer;
