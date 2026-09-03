@@ -297,8 +297,13 @@ export function ExerciseCard({
   onToggleExerciseComplete,
 }: ExerciseCardProps) {
   const [warmupOpen, setWarmupOpen] = useState(false);
+  const [isWarmupAdded, setIsWarmupAdded] = useState(false);
+
   const hasWarmup =
-    exercise.warmup.weight !== null || exercise.warmup.reps !== null;
+    exercise.warmup.weight !== null ||
+    exercise.warmup.reps !== null ||
+    Boolean(exercise.warmup.isCompleted) ||
+    isWarmupAdded;
 
   // Exercise is considered complete if explicitly flagged or all working sets are marked complete
   const allWorkingSetsCompleted =
@@ -482,8 +487,8 @@ export function ExerciseCard({
         aria-hidden
       />
 
-      {/* ── Warmup row (collapsible) ──────────────────────────────────────── */}
-      {hasWarmup && (
+      {/* ── Optional Warmup row (collapsible or toggleable) ──────────────── */}
+      {hasWarmup ? (
         <div className="px-3 mb-2">
           <button
             id={`warmup-toggle-${exercise.id}`}
@@ -513,7 +518,7 @@ export function ExerciseCard({
                 letterSpacing: "0.1em",
               }}
             >
-              Warmup
+              Warmup Set
             </span>
           </button>
 
@@ -546,10 +551,42 @@ export function ExerciseCard({
                 onToggleComplete={() =>
                   onToggleSetComplete?.(exercise.id, 0, true)
                 }
+                onRemove={() => {
+                  setIsWarmupAdded(false);
+                  setWarmupOpen(false);
+                  onSetChange(exercise.id, {
+                    setIndex: 0,
+                    field: "weight",
+                    value: null,
+                    isWarmup: true,
+                  });
+                  onSetChange(exercise.id, {
+                    setIndex: 0,
+                    field: "reps",
+                    value: null,
+                    isWarmup: true,
+                  });
+                }}
               />
             </div>
           )}
         </div>
+      ) : (
+        isEditMode && (
+          <div className="px-3 pb-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsWarmupAdded(true);
+                setWarmupOpen(true);
+              }}
+              className="flex items-center gap-1.5 font-body text-xs text-steel hover:text-[#dfff00] transition-colors cursor-pointer py-1"
+            >
+              <span className="font-mono text-xs">+</span>
+              <span>Add Warmup Set</span>
+            </button>
+          </div>
+        )
       )}
 
       {/* ── Working sets ──────────────────────────────────────────────────── */}

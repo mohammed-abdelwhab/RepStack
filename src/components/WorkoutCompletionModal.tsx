@@ -59,19 +59,22 @@ export function WorkoutCompletionModal({
         style={{
           background: "#161616",
           border: "1.5px solid #dfff00",
-          boxShadow: "0 0 35px rgba(223, 255, 0, 0.25), 0 20px 50px rgba(0,0,0,0.9)",
+          boxShadow:
+            "0 0 35px rgba(223, 255, 0, 0.25), 0 20px 50px rgba(0,0,0,0.9)",
         }}
       >
         {/* Glow effect */}
         <div
           className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full pointer-events-none"
           style={{
-            background: "radial-gradient(circle, rgba(223, 255, 0, 0.2) 0%, transparent 70%)",
+            background:
+              "radial-gradient(circle, rgba(223, 255, 0, 0.2) 0%, transparent 70%)",
           }}
         />
 
         {/* Celebration Trophy Badge */}
-        <div className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-3 text-3xl shadow-inner"
+        <div
+          className="mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-3 text-3xl shadow-inner"
           style={{
             background: "rgba(223, 255, 0, 0.12)",
             border: "1px solid rgba(223, 255, 0, 0.35)",
@@ -88,7 +91,8 @@ export function WorkoutCompletionModal({
           Nice Work!
         </h2>
         <p className="font-body text-xs text-steel mt-1">
-          <strong className="text-[#dfff00]">{dayName}</strong> session saved to your database history!
+          <strong className="text-[#dfff00]">{dayName}</strong> session saved to
+          your database history!
         </p>
 
         {/* Stats Grid */}
@@ -154,7 +158,10 @@ export function WorkoutCompletionModal({
             </div>
             {newPRs.map((pr, idx) => (
               <p key={idx} className="font-body text-xs text-white">
-                • {pr.exerciseName}: <strong>{pr.weight} kg × {pr.reps} reps</strong>
+                • {pr.exerciseName}:{" "}
+                <strong>
+                  {pr.weight} kg × {pr.reps} reps
+                </strong>
               </p>
             ))}
           </div>

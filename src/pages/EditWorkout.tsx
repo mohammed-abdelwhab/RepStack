@@ -9,6 +9,7 @@ interface EditableExercise {
   name: string;
   notes: string;
   workingSetCount: number;
+  hasWarmupSet?: boolean;
   isNew?: boolean;
   isDeleted?: boolean;
 }
@@ -44,15 +45,19 @@ export default function EditWorkout() {
     );
     const mapped: EditableExercise[] = dayExercises.map((e) => {
       const config = state.exerciseConfigs.find((c) => c.exercise_id === e.id);
+      const hasPriorWarmup = state.setEntries.some(
+        (s) => s.exercise_id === e.id && s.set_type === "warmup",
+      );
       return {
         id: e.id,
         name: e.name,
         notes: e.notes || "",
         workingSetCount: config?.working_set_count ?? 3,
+        hasWarmupSet: hasPriorWarmup,
       };
     });
     setExercises(mapped);
-  }, [dayId, dbDay, state.exercises, state.exerciseConfigs]);
+  }, [dayId, dbDay, state.exercises, state.exerciseConfigs, state.setEntries]);
 
   if (!dbDay) {
     return (
@@ -78,6 +83,7 @@ export default function EditWorkout() {
         name: "",
         notes: "",
         workingSetCount: 3,
+        hasWarmupSet: false,
         isNew: true,
       },
     ]);
@@ -381,6 +387,43 @@ export default function EditWorkout() {
                         }
                         className="bg-black text-chalk font-body text-base rounded px-3.5 py-2.5 border border-steel/15 focus:border-iron focus:outline-none"
                       />
+                    </div>
+
+                    {/* Warmup Set Toggle Button */}
+                    <div className="flex justify-between items-center mt-2 pt-2.5 border-t border-white/5">
+                      <div className="flex flex-col">
+                        <span className="font-body text-xs text-white font-medium">
+                          Warmup Set
+                        </span>
+                        <span className="font-body text-[10px] text-steel">
+                          Add 1 warmup set row for this exercise
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleExerciseChange(
+                            ex.id,
+                            "hasWarmupSet",
+                            !ex.hasWarmupSet,
+                          )
+                        }
+                        className="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded-lg transition-all active:scale-95 cursor-pointer"
+                        style={{
+                          background: ex.hasWarmupSet
+                            ? "rgba(223, 255, 0, 0.15)"
+                            : "rgba(255, 255, 255, 0.04)",
+                          border: ex.hasWarmupSet
+                            ? "1px solid #dfff00"
+                            : "1px solid rgba(255, 255, 255, 0.1)",
+                          color: ex.hasWarmupSet ? "#dfff00" : "#e5e2e1",
+                          fontWeight: ex.hasWarmupSet ? 700 : 400,
+                        }}
+                      >
+                        <span>
+                          {ex.hasWarmupSet ? "✓ Warmup Active" : "+ Add Warmup"}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 ))

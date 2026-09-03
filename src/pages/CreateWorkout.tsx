@@ -7,6 +7,7 @@ interface TempExercise {
   name: string;
   notes: string;
   workingSetCount: number;
+  hasWarmupSet: boolean;
 }
 
 export default function CreateWorkout() {
@@ -15,13 +16,16 @@ export default function CreateWorkout() {
 
   const [dayName, setDayName] = useState("");
   const [exercises, setExercises] = useState<TempExercise[]>([
-    { name: "", notes: "", workingSetCount: 3 },
+    { name: "", notes: "", workingSetCount: 3, hasWarmupSet: false },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleAddExerciseRow = () => {
-    setExercises([...exercises, { name: "", notes: "", workingSetCount: 3 }]);
+    setExercises([
+      ...exercises,
+      { name: "", notes: "", workingSetCount: 3, hasWarmupSet: false },
+    ]);
   };
 
   const handleRemoveExerciseRow = (index: number) => {
@@ -251,6 +255,43 @@ export default function CreateWorkout() {
                       }
                       className="bg-black text-chalk font-body text-base rounded px-3.5 py-2.5 border border-steel/15 focus:border-iron focus:outline-none"
                     />
+                  </div>
+
+                  {/* Warmup Set Toggle Button */}
+                  <div className="flex justify-between items-center mt-2 pt-2.5 border-t border-white/5">
+                    <div className="flex flex-col">
+                      <span className="font-body text-xs text-white font-medium">
+                        Warmup Set
+                      </span>
+                      <span className="font-body text-[10px] text-steel">
+                        Add 1 warmup set row for this exercise
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleExerciseChange(
+                          idx,
+                          "hasWarmupSet",
+                          !ex.hasWarmupSet,
+                        )
+                      }
+                      className="flex items-center gap-1.5 font-mono text-xs px-3 py-1.5 rounded-lg transition-all active:scale-95 cursor-pointer"
+                      style={{
+                        background: ex.hasWarmupSet
+                          ? "rgba(223, 255, 0, 0.15)"
+                          : "rgba(255, 255, 255, 0.04)",
+                        border: ex.hasWarmupSet
+                          ? "1px solid #dfff00"
+                          : "1px solid rgba(255, 255, 255, 0.1)",
+                        color: ex.hasWarmupSet ? "#dfff00" : "#e5e2e1",
+                        fontWeight: ex.hasWarmupSet ? 700 : 400,
+                      }}
+                    >
+                      <span>
+                        {ex.hasWarmupSet ? "✓ Warmup Active" : "+ Add Warmup"}
+                      </span>
+                    </button>
                   </div>
                 </div>
               ))}

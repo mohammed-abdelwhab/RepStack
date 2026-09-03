@@ -4,7 +4,11 @@ export interface MockExercise {
   notes: string;
   imageUrl: string | null;
   warmup: { weight: number | null; reps: number | null; isCompleted?: boolean };
-  workingSets: { weight: number | null; reps: number | null; isCompleted?: boolean }[];
+  workingSets: {
+    weight: number | null;
+    reps: number | null;
+    isCompleted?: boolean;
+  }[];
   isCompleted?: boolean;
 }
 
