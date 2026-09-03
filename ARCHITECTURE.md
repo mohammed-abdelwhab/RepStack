@@ -1,12 +1,51 @@
 # System Architecture & Contributor Guide — RepStack
 
-This document details the architectural layout, database schemas, state management systems, and user navigation routes of the RepStack Gym Tracker. It is designed to help junior developers and contributors quickly ramp up, study the architecture, and make modifications to the codebase.
+This document details the architectural layout, design patterns, database schemas, state management systems, component hierarchy, and user navigation routes of the RepStack Gym Tracker. It is designed to help developers and contributors quickly ramp up, study the architecture, and understand the entire codebase.
+
+---
+
+## 🏗️ Architectural Overview & Design Patterns
+
+RepStack follows modern React software engineering best practices with a focus on **type safety**, **unidirectional data flow**, **declarative state management**, and **performance optimization**:
+
+```mermaid
+graph TD
+    UI[React View Layer / Pages] -->|User Intent / Triggers| Ctx[GymTrackerContext Dispatchers]
+    Ctx -->|Async Execution| Gateway[Supabase Query Client / Data Gateway]
+    Gateway -->|PostgreSQL Queries & RLS| DB[(Supabase Cloud Database)]
+    DB -->|Verified Payload| Gateway
+    Gateway -->|Dispatch Action| Reducer[gymTrackerReducer State Machine]
+    Reducer -->|Immutable Global State| Ctx
+    Ctx -->|React State Subscription| UI
+```
+
+### Key Design Patterns Implemented:
+
+1. **Unidirectional Data Flow (Flux / MVI Pattern)**:
+   - State flows strictly downwards from `GymTrackerContext` to components.
+   - User actions trigger pure functions in `GymTrackerContext`, which call the async database gateway and dispatch immutable actions to `gymTrackerReducer`.
+   - The UI never mutates state directly.
+
+2. **Database Gateway & Defensive Query Layer (`useSupabaseQuery.ts`)**:
+   - Isolates all `@supabase/supabase-js` API calls from the React component tree.
+   - Implements defensive fallbacks (e.g., handles missing columns or network interruptions gracefully without crashing the app).
+
+3. **Runtime Schema Validation (`Zod`)**:
+   - Located in `src/schemas/`.
+   - Validates all incoming database entities at runtime to prevent malformed data from propagating into state.
+
+4. **Zero-Dependency Web Audio API Synthesizer (`audioUtils.ts`)**:
+   - Uses native browser `AudioContext` with sine/triangle oscillators to generate clean, musical notification chimes for rest timers and PR celebrations without external MP3 dependencies or CORS issues.
+
+5. **Code-Splitting & Lazy Loading (`React.lazy` + `Suspense`)**:
+   - Configured in `src/App.tsx` with Rollup `manualChunks` in `vite.config.ts`.
+   - Splits the application into isolated route chunks under 35 kB, paired with an athletic dark `<PageSkeletonLoader />` during initial hydration.
 
 ---
 
 ## 🗺️ User Flow & Routing Topology
 
-RepStack uses **React Router v6** with **code-splitting (`React.lazy()`)** for high performance. Protected pages are wrapped in a `<ProtectedRoute>` component that verifies authentication status via the `useGymTracker` context hook.
+RepStack uses **React Router v6** with **code-splitting (`React.lazy()`)**. Protected pages are wrapped in a `<ProtectedRoute>` component that verifies authentication status via the `useGymTracker` context hook.
 
 ```mermaid
 graph TD
@@ -17,22 +56,58 @@ graph TD
     
     C -->|Sign Up / Sign In| D
     
-    D -->|Click Start Workout| E[Workout Session Page /workout/:dayId]
-    D -->|Click New Day| F[Create Workout Page /workout/new]
+    D -->|Click Routine Tab| E[Workout Session Page /workout/:dayId]
+    D -->|Click + Create Routine| F[Create Workout Page /workout/new]
     D -->|Click Edit Routine| G[Edit Workout Page /workout/:dayId/edit]
     
-    E -->|Log Workout| D
+    E -->|View Only Mode| E
+    E -->|Click Start Workout| ET[Active Live Training Mode]
+    ET -->|Log Workout| D
+    ET -->|Cancel / Discard| E
+    
     F -->|Save Routine| D
+    F -->|Cancel| D
     G -->|Update / Delete| D
+    G -->|Cancel| E
 ```
 
 ### Route & Code-Split Chunks Index
-- **`/login` (`Auth.tsx`)**: Lazy chunk (`~4.5 kB`). Houses email login and registration forms. Built-in routing redirects back to the dashboard if a valid session exists.
-- **`/` (`Dashboard.tsx`)**: Lazy chunk (`~26 kB`). The central Hub displaying active routines, exercise progression line charts, past workouts history, and weekly volume graphs.
-- **`/workout/:dayId` (`WorkoutSession.tsx`)**: Lazy chunk (`~28 kB`). The active workout dashboard displaying warmup/working set inputs, customizable rest timers, and the workout completion commit action.
-- **`/workout/new` (`CreateWorkout.tsx`)**: Lazy chunk (`~6 kB`). Dedicated routine configuration page to build a new training day tab.
-- **`/workout/:dayId/edit` (`EditWorkout.tsx`)**: Lazy chunk (`~10 kB`). Routine modifications page allowing inline renames, additions/deletions of exercises, set configuration counts, or cascading deletion of the entire day.
-- **`<PageSkeletonLoader />`**: Reusable instant skeleton loader that provides athletic dark shimmer placeholders during authentication resolution and route transitions in `<Suspense>`.
+- **`/login` (`Auth.tsx`)**: Lazy chunk (`~4.5 kB`). Houses email login, registration forms, and password resets.
+- **`/` (`Dashboard.tsx`)**: Lazy chunk (`~33 kB`). The central Hub displaying active routines, GitHub-style 52-week activity heatmap, exercise progression charts, and past workout history.
+- **`/workout/:dayId` (`WorkoutSession.tsx`)**: Lazy chunk (`~32 kB`). The core workout page supporting both **View-Only Preview** and **Live Active Training Mode** with stopwatch duration, rest timer, and PR tracking.
+- **`/workout/new` (`CreateWorkout.tsx`)**: Lazy chunk (`~6.5 kB`). Dedicated routine builder page to create new workout days.
+- **`/workout/:dayId/edit` (`EditWorkout.tsx`)**: Lazy chunk (`~8.6 kB`). Routine modifications page allowing inline renames, additions/deletions of exercises, set configuration counts, or cascading deletion of the routine.
+- **`<PageSkeletonLoader />`**: Reusable instant skeleton loader that provides athletic dark shimmer placeholders during authentication resolution and route transitions.
+
+---
+
+## 📱 Page & Component Directory
+
+### 1. `src/pages/`
+| Page File | Route | Description & Key Responsibilities |
+| :--- | :--- | :--- |
+| [`Auth.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/pages/Auth.tsx) | `/login` | Authentication form handling login, sign up, and validation feedback. |
+| [`Dashboard.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/pages/Dashboard.tsx) | `/` | Master hub featuring the 52-week contribution heatmap, volume charts, exercise PR progression line charts, and quick-launch routine buttons. |
+| [`WorkoutSession.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/pages/WorkoutSession.tsx) | `/workout/:dayId` | Core training screen featuring View-Only mode, live stopwatch, sticky top-anchored rest timer, editable exercise cards, and cancel confirmation modal. |
+| [`CreateWorkout.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/pages/CreateWorkout.tsx) | `/workout/new` | Multi-exercise routine builder with target set configurations and Cancel button. |
+| [`EditWorkout.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/pages/EditWorkout.tsx) | `/workout/:dayId/edit` | Routine editor for adding/removing exercises, modifying target sets, deleting routines, or canceling changes. |
+
+---
+
+### 2. `src/components/`
+| Component | Responsibility |
+| :--- | :--- |
+| [`WorkoutHeatmap.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/WorkoutHeatmap.tsx) | GitHub-style 52-week (364-day) activity matrix with intensity color grading, live streak calculation (🔥 Current & 🏆 Best), and interactive hover popovers. |
+| [`RestTimer.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/RestTimer.tsx) | Top-anchored (`top-16`) floating countdown timer with 30s/1m/90s/2m/3m/5m presets, audio chime trigger, circular SVG progress, and sound mute toggle. |
+| [`ExerciseCard.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/ExerciseCard.tsx) | Exercise card supporting both read-only preview mode and active editing mode. Displays PR badges, last logged weight/reps, inline `⏱️ Rest` launcher, and set controls. |
+| [`ExerciseProgressionChart.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/ExerciseProgressionChart.tsx) | Interactive SVG line chart rendering chronological progression, estimated 1RM calculations, and volume curves for any selected exercise. |
+| [`ConfirmationModal.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/ConfirmationModal.tsx) | Athletic dark modal replacing native browser `confirm()`, supporting destructive actions (e.g. discarding active sessions or deleting routines). |
+| [`StatusAlert.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/StatusAlert.tsx) | Reusable inline banner for `"success"`, `"warning"`, `"error"`, and `"info"` messages. |
+| [`ToastNotification.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/ToastNotification.tsx) | Floating toast banner with auto-dismiss timers for instant feedback. |
+| [`PRCelebration.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/PRCelebration.tsx) | Animated badge modal celebrating new Personal Records broken during training. |
+| [`SideDrawer.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/SideDrawer.tsx) | Slide-out navigation drawer with user profile rename modal, routine list, and sign-out action. |
+| [`BottomTabBar.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/BottomTabBar.tsx) | Sticky bottom navigation bar allowing seamless switching between workout days and stats. |
+| [`PageSkeletonLoader.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/PageSkeletonLoader.tsx) | Dark shimmer skeleton loader for route transitions and auth hydration. |
 
 ---
 
@@ -77,7 +152,8 @@ erDiagram
    - `id` (int8, PK): Auto-incrementing identifier.
    - `user_id` (uuid, FK): Points to `auth.users.id` (cascade delete).
    - `workout_day_id` (int8, FK): Points to `workout_days.id` (cascade delete).
-   - `performed_on` (date): The training calendar date.
+   - `performed_on` (date): The training calendar date (`YYYY-MM-DD`).
+   - `duration_seconds` (int4): Total elapsed duration of the workout session in seconds (default: 0).
 
 5. **`set_entries`**:
    - `id` (int8, PK): Auto-incrementing identifier.
@@ -93,7 +169,7 @@ erDiagram
    - `exercise_id` (int8, FK, UNIQUE): Points to `exercises.id` (cascade delete).
    - `max_weight` (numeric): Maximum weight successfully lifted.
    - `max_weight_reps` (int4): Reps completed at max weight.
-   - `achieved_on` (date): Date of achievements.
+   - `achieved_on` (date): Date of achievement.
    - `previous_weight` (numeric): History trace (nullable).
 
 ---
@@ -147,36 +223,9 @@ WITH CHECK (EXISTS (SELECT 1 FROM public.exercises JOIN public.workout_days ON w
 
 ---
 
-## 🔗 Cross-Routine Shared Exercise History & PR Tracking
-
-In gym routines, the same fundamental exercise (e.g. *"Incline Bench Press"*) may appear in multiple workout days (e.g., both *"Push"* and *"Chest & Back"*). RepStack unifies them seamlessly:
-
-1. **Normalized Exercise Identity**:
-   - Helper functions in `src/utils/exerciseUtils.ts` normalize exercise names (`name.trim().toLowerCase()`).
-2. **Global Last-Performance Lookup**:
-   - When a workout session opens, the system queries the entire workout history across all days for any prior occurrence of that exercise name.
-   - If you logged `25 kg` on a Monday *"Push"* day, opening *"Chest & Back"* on Thursday immediately pre-populates your working sets with `25 kg` as your last logged reference.
-3. **Cross-Routine Personal Records (PR)**:
-   - When a session is submitted, PR checks evaluate against the all-time highest record for that normalized name across all routines.
-   - Breaking a record automatically updates the PR for that exercise across all workout days where it is used.
-4. **Interactive Progression Line Graph (`ExerciseProgressionChart.tsx`)**:
-   - Placed directly on the dashboard, allowing users to filter by any exercise and view chronological progress (S1, S2, ..., NOW) with SVG glow curves, 1RM estimations, and volume trends.
-
----
-
-## ⚡ State Management Flow (MBI Pattern)
+## ⚡ State Management Flow (MVI Pattern)
 
 RepStack implements the Model-View-Intent pattern by combining the React **Context API** (`GymTrackerContext.tsx`) and the **useReducer** hook (`gymTrackerReducer.ts`). 
-
-```mermaid
-graph LR
-    Action[User Action] --> Context[GymTrackerContext]
-    Context --> API[useSupabaseQuery Client]
-    API --> Database[(Supabase DB)]
-    Database --> Dispatch[Dispatch Action]
-    Dispatch --> Reducer[gymTrackerReducer]
-    Reducer --> UI[React Component Re-render]
-```
 
 ### Central Reducer Action Index
 All database operations are synchronized locally through these actions in `gymTrackerReducer.ts`:
@@ -185,7 +234,7 @@ All database operations are synchronized locally through these actions in `gymTr
 - `ADD_WORKOUT_DAY` / `UPDATE_WORKOUT_DAY` / `DELETE_WORKOUT_DAY`: Handles routines CRUD.
 - `ADD_EXERCISE` / `UPDATE_EXERCISE` / `REMOVE_EXERCISE`: Handles routine exercise configs.
 - `UPDATE_EXERCISE_CONFIG`: Modifies target sets counts.
-- `LOG_SESSION`: Commits a session log, inserts set entries, and updates personal records (PR) simultaneously.
+- `LOG_SESSION`: Commits a session log, inserts set entries, records elapsed duration, and updates personal records (PR) simultaneously.
 
 ---
 
@@ -197,8 +246,8 @@ Follow this 5-step roadmap to thoroughly understand and master this codebase:
 graph TD
     Step1["Step 1: Database & Schemas (src/schemas)"] --> Step2["Step 2: API & State Machine (src/hooks & src/reducers)"]
     Step2 --> Step3["Step 3: Context Provider (src/context)"]
-    Step3 --> Step4["Step 4: Cross-Workout Utils (src/utils)"]
-    Step4 --> Step5["Step 5: Code-Split Views & UI Components (src/pages & src/components)"]
+    Step3 --> Step4["Step 4: Math & Audio Utilities (src/utils)"]
+    Step4 --> Step5["Step 5: Pages & Components (src/pages & src/components)"]
 ```
 
 ### 1. Step 1: Database & Schemas (`src/schemas/` & `src/types/`)
@@ -206,19 +255,24 @@ graph TD
 - Understand how database rows are validated at runtime and mapped into strongly typed TypeScript entities.
 
 ### 2. Step 2: Database Queries & Pure State Machine (`src/hooks/` & `src/reducers/`)
-- Inspect `src/hooks/useSupabaseQuery.ts`: Study how queries, inserts, and transaction rollbacks are written using the `@supabase/supabase-js` client.
-- Inspect `src/reducers/gymTrackerReducer.ts`: Understand pure state transitions, how arrays are updated immutably, and why state normalization prevents duplicate entity trees.
+- Inspect [`src/hooks/useSupabaseQuery.ts`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/hooks/useSupabaseQuery.ts): Study how queries, inserts, duration logging, and defensive error handling are written using `@supabase/supabase-js`.
+- Inspect [`src/reducers/gymTrackerReducer.ts`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/reducers/gymTrackerReducer.ts): Understand pure state transitions, immutable array updates, and how state normalization prevents duplicate entity trees.
 
 ### 3. Step 3: Central Context Provider (`src/context/GymTrackerContext.tsx`)
 - Study how the auth lifecycle listener (`supabase.auth.onAuthStateChange`) triggers automatic table hydration on sign-in and resets state on logout.
-- See how action functions (`addWorkoutDay`, `logSession`, etc.) bridge the UI with the query hooks and reducer dispatch.
+- See how action functions (`addWorkoutDay`, `logSession`, etc.) bridge the UI with query hooks and reducer dispatches.
 
-### 4. Step 4: Normalization & Math Formulas (`src/utils/exerciseUtils.ts`)
-- Review `normalizeExerciseName` to see how exercises with identical names across different workout days share history.
-- Review `calculate1RM` to understand how the Epley formula (`Weight * (1 + Reps / 30)`) derives estimated One Rep Max numbers.
-- Review `getExerciseProgressionTimeline` to see how chronological data points are generated for SVG graphs.
+### 4. Step 4: Normalization, Math Formulas & Web Audio API (`src/utils/`)
+- Review [`src/utils/exerciseUtils.ts`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/utils/exerciseUtils.ts):
+  - `normalizeExerciseName`: Allows identical exercises across different workout days to share history and PRs.
+  - `calculate1RM`: Uses the Epley formula (`Weight * (1 + Reps / 30)`) to derive estimated One Rep Max.
+  - `getExerciseProgressionTimeline`: Generates chronological data points for SVG line charts.
+- Review [`src/utils/audioUtils.ts`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/utils/audioUtils.ts):
+  - Uses native `AudioContext` to synthesize 3-tone chimes for timer expiration and workout completion.
 
-### 5. Step 5: Routing, Lazy Loading, and UI Components (`src/App.tsx`, `src/pages/`, `src/components/`)
-- Study `src/App.tsx` to understand how `React.lazy()` and `<Suspense fallback={<PageSkeletonLoader />}>` split the application into sub-30kB route chunks.
-- Explore `src/pages/Dashboard.tsx` and `src/components/ExerciseProgressionChart.tsx` to see how SVG paths, linear gradients, and Bento metric grids are rendered with Tailwind CSS tokens.
-- Review `src/components/StatusAlert.tsx`, `ToastNotification.tsx`, and `ConfirmationModal.tsx` to see the unified feedback architecture.
+### 5. Step 5: Routing, Workflows & UI Components (`src/App.tsx`, `src/pages/`, `src/components/`)
+- Study [`src/App.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/App.tsx) for route chunking (`React.lazy`) and `<Suspense>`.
+- Study [`src/pages/WorkoutSession.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/pages/WorkoutSession.tsx) to understand the **View-Only Preview** vs. **Live Active Training** state machine.
+- Explore [`src/components/WorkoutHeatmap.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/WorkoutHeatmap.tsx) for 52-week calendar matrix calculations and streak tracking.
+- Review [`src/components/RestTimer.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/RestTimer.tsx) for countdown timers and sound triggers.
+- Review [`src/components/StatusAlert.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/StatusAlert.tsx), [`ToastNotification.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/ToastNotification.tsx), and [`ConfirmationModal.tsx`](file:///d:/React-Course/My-React-projects/Gym-Tracker/src/components/ConfirmationModal.tsx) for the unified feedback architecture.
