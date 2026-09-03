@@ -260,7 +260,8 @@ export default function WorkoutSession() {
 
   // Log active workout to Supabase
   const handleLogWorkout = async () => {
-    const performedOn = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const performedOn = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
     // Format all draft values to schema list
     const entriesToSave: Omit<SetEntry, "id" | "session_id">[] = [];
@@ -464,8 +465,15 @@ export default function WorkoutSession() {
           </button>
 
           <div>
-            <h1 className="font-display font-black text-sm text-white tracking-wider leading-none">
-              ACTIVE TRAINING
+            <h1 className="font-display font-black text-sm tracking-wider leading-none flex items-center gap-1.5 text-white">
+              {isWorkoutStarted ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-[#dfff00] animate-pulse" />
+                  <span>ACTIVE TRAINING</span>
+                </>
+              ) : (
+                <span className="text-steel">ROUTINE PREVIEW</span>
+              )}
             </h1>
             <p className="font-body text-[10px] text-steel uppercase mt-1 tracking-widest">
               {dbDay.name}
@@ -567,14 +575,27 @@ export default function WorkoutSession() {
         }}
       >
         {/* Title details */}
-        <div className="px-4 pt-4 pb-2">
-          <h2 className="font-display font-black text-2xl text-white">
-            {dbDay.name}
-          </h2>
-          <p className="font-body text-xs text-steel mt-0.5">
-            {draftExercises.length} exercise
-            {draftExercises.length === 1 ? "" : "s"} listed
-          </p>
+        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+          <div>
+            <h2 className="font-display font-black text-2xl text-white">
+              {dbDay.name}
+            </h2>
+            <p className="font-body text-xs text-steel mt-0.5">
+              {draftExercises.length} exercise
+              {draftExercises.length === 1 ? "" : "s"} listed
+            </p>
+          </div>
+          {!isWorkoutStarted && (
+            <span
+              className="font-mono text-[10px] px-2.5 py-1 rounded-md text-steel"
+              style={{
+                background: "rgba(255, 255, 255, 0.04)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+              }}
+            >
+              👁️ View Only
+            </span>
+          )}
         </div>
 
         {/* Exercises */}
@@ -598,7 +619,7 @@ export default function WorkoutSession() {
                 exercise={exercise}
                 globalPR={globalPR}
                 lastPerformance={lastPerf}
-                isEditMode={true} // Allow inline logging edits
+                isEditMode={isWorkoutStarted} // Only editable during active training session
                 onSetChange={handleSetChange}
                 onAddSet={handleAddSet}
                 onRemoveSet={handleRemoveSet}
@@ -609,38 +630,56 @@ export default function WorkoutSession() {
           })}
         </div>
 
-        {/* Action Buttons: Cancel & Log Workout */}
-        <div className="px-4 pb-6 pt-2 flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setIsConfirmCancelOpen(true)}
-            className="px-4 py-4 rounded-2xl font-display font-bold text-xs uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex-shrink-0"
-            style={{
-              background: "rgba(255, 49, 49, 0.08)",
-              border: "1px solid rgba(255, 49, 49, 0.25)",
-              color: "#ff3131",
-            }}
-          >
-            ✕ CANCEL
-          </button>
+        {/* Action Area: Start Workout (View Mode) OR Cancel & Log Workout (Live Training Mode) */}
+        {!isWorkoutStarted ? (
+          <div className="px-4 pb-6 pt-2">
+            <button
+              type="button"
+              onClick={handleStartWorkout}
+              className="w-full rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+              style={{
+                background: "#dfff00",
+                color: "#000000",
+                boxShadow: "0px 6px 20px rgba(223, 255, 0, 0.2)",
+                letterSpacing: "0.05em",
+              }}
+            >
+              <span>▶</span> START {dbDay.name.toUpperCase()} WORKOUT
+            </button>
+          </div>
+        ) : (
+          <div className="px-4 pb-6 pt-2 flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsConfirmCancelOpen(true)}
+              className="px-4 py-4 rounded-2xl font-display font-bold text-xs uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer flex-shrink-0"
+              style={{
+                background: "rgba(255, 49, 49, 0.08)",
+                border: "1px solid rgba(255, 49, 49, 0.25)",
+                color: "#ff3131",
+              }}
+            >
+              ✕ CANCEL
+            </button>
 
-          <button
-            disabled={isLogged}
-            onClick={handleLogWorkout}
-            className="flex-1 rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer"
-            style={{
-              background: isLogged ? "rgba(255,255,255,0.04)" : "#dfff00",
-              color: isLogged ? "#565C66" : "#000000",
-              border: isLogged ? "1px solid rgba(255,255,255,0.08)" : "none",
-              boxShadow: isLogged
-                ? "none"
-                : "0px 6px 20px rgba(223, 255, 0, 0.15)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            {isLogged ? "✓ WORKOUT LOGGED" : `LOG ${dbDay.name} WORKOUT`}
-          </button>
-        </div>
+            <button
+              disabled={isLogged}
+              onClick={handleLogWorkout}
+              className="flex-1 rounded-2xl py-4 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer"
+              style={{
+                background: isLogged ? "rgba(255,255,255,0.04)" : "#dfff00",
+                color: isLogged ? "#565C66" : "#000000",
+                border: isLogged ? "1px solid rgba(255,255,255,0.08)" : "none",
+                boxShadow: isLogged
+                  ? "none"
+                  : "0px 6px 20px rgba(223, 255, 0, 0.15)",
+                letterSpacing: "0.05em",
+              }}
+            >
+              {isLogged ? "✓ WORKOUT LOGGED" : `LOG ${dbDay.name} WORKOUT`}
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Tabs */}

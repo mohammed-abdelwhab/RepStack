@@ -174,9 +174,7 @@ export function RestTimer({
               {isDone ? "GO!" : timeDisplay}
             </span>
             {!isDone && (
-              <span
-                className="font-body text-[8px] font-bold text-steel uppercase mt-0.5 tracking-wider"
-              >
+              <span className="font-body text-[8px] font-bold text-steel uppercase mt-0.5 tracking-wider">
                 REST
               </span>
             )}

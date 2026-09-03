@@ -482,129 +482,53 @@ export function ExerciseCard({
         ))}
       </div>
 
-      {/* ── Add / Remove set controls ────────────────────────────────────── */}
-      <div className="flex items-center gap-4 px-4 py-3">
-        <button
-          id={`add-set-${exercise.id}`}
-          onClick={() => onAddSet(exercise.id)}
-          aria-label={`Add set to ${exercise.name}`}
-          className="flex items-center gap-1.5 font-body text-xs font-medium transition-all duration-150 active:scale-95 cursor-pointer group/add"
-          style={{
-            color: "#C4622D",
-            letterSpacing: "0.04em",
-            background: "none",
-            border: "none",
-            padding: 0,
-          }}
-        >
-          <span
-            className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150 group-hover/add:scale-110"
-            style={{
-              background: "rgba(196,98,45,0.15)",
-              border: "1px solid rgba(196,98,45,0.3)",
-              fontSize: 14,
-              lineHeight: 1,
-            }}
-          >
-            +
-          </span>
-          Add set
-        </button>
-
-        {exercise.workingSets.length > 1 && (
+      {/* ── Add / Remove set controls (Visible in Edit Mode Only) ───────── */}
+      {isEditMode && (
+        <div className="flex items-center gap-4 px-4 py-3 border-t border-white/5">
           <button
-            id={`remove-last-set-${exercise.id}`}
-            onClick={() =>
-              onRemoveSet(exercise.id, exercise.workingSets.length - 1)
-            }
-            aria-label={`Remove last set from ${exercise.name}`}
-            className="flex items-center gap-1.5 font-body text-xs font-medium transition-all duration-150 active:scale-95 cursor-pointer group/rem"
-            style={{
-              color: "#565C66",
-              letterSpacing: "0.04em",
-              background: "none",
-              border: "none",
-              padding: 0,
-            }}
+            id={`add-set-${exercise.id}`}
+            type="button"
+            onClick={() => onAddSet(exercise.id)}
+            aria-label={`Add set to ${exercise.name}`}
+            className="flex items-center gap-1.5 font-body text-xs font-semibold transition-all duration-150 active:scale-95 cursor-pointer text-[#dfff00]"
           >
             <span
-              className="w-5 h-5 rounded-full flex items-center justify-center transition-all duration-150 group-hover/rem:scale-110"
+              className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs"
               style={{
-                background: "rgba(86,92,102,0.12)",
-                border: "1px solid rgba(86,92,102,0.2)",
-                fontSize: 14,
-                lineHeight: 1,
+                background: "rgba(223, 255, 0, 0.15)",
+                border: "1px solid rgba(223, 255, 0, 0.3)",
+                color: "#dfff00",
               }}
             >
-              −
+              +
             </span>
-            Remove set
+            Add set
           </button>
-        )}
 
-        {/* Rest timer trigger */}
-        {!isEditMode && (
-          <button
-            id={`start-rest-${exercise.id}`}
-            onClick={onStartTimer}
-            aria-label="Start rest timer"
-            className="flex items-center gap-1.5 font-body text-xs font-medium transition-all duration-150 active:scale-95 cursor-pointer group/rest"
-            style={{
-              color: "#565C66",
-              letterSpacing: "0.04em",
-              background: "none",
-              border: "none",
-              padding: 0,
-              marginLeft: "auto",
-            }}
-          >
-            <span
-              className="w-6 h-6 rounded-full flex items-center justify-center transition-all duration-150 group-hover/rest:scale-110 group-hover/rest:border-iron/50"
-              style={{
-                background: "rgba(86,92,102,0.1)",
-                border: "1px solid rgba(86,92,102,0.18)",
-                fontSize: 13,
-                lineHeight: 1,
-              }}
-            >
-              ⏱
-            </span>
-            Rest
-          </button>
-        )}
-
-        {/* Edit mode: reorder placeholder controls */}
-        {isEditMode && (
-          <div className="ml-auto flex items-center gap-2">
+          {exercise.workingSets.length > 1 && (
             <button
-              id={`reorder-up-${exercise.id}`}
-              aria-label={`Move ${exercise.name} up`}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer"
-              style={{
-                background: "rgba(86,92,102,0.12)",
-                border: "1px solid rgba(86,92,102,0.2)",
-                color: "#565C66",
-                fontSize: 12,
-              }}
+              id={`remove-last-set-${exercise.id}`}
+              type="button"
+              onClick={() =>
+                onRemoveSet(exercise.id, exercise.workingSets.length - 1)
+              }
+              aria-label={`Remove last set from ${exercise.name}`}
+              className="flex items-center gap-1.5 font-body text-xs font-medium text-steel hover:text-white transition-all duration-150 active:scale-95 cursor-pointer"
             >
-              ↑
+              <span
+                className="w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                }}
+              >
+                −
+              </span>
+              Remove set
             </button>
-            <button
-              id={`reorder-down-${exercise.id}`}
-              aria-label={`Move ${exercise.name} down`}
-              className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 active:scale-90 cursor-pointer"
-              style={{
-                background: "rgba(86,92,102,0.12)",
-                border: "1px solid rgba(86,92,102,0.2)",
-                color: "#565C66",
-                fontSize: 12,
-              }}
-            >
-              ↓
-            </button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </article>
   );
 }
