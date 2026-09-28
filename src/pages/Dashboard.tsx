@@ -5,6 +5,7 @@ import { SideDrawer } from "../components/SideDrawer";
 import { WeeklyDashboardShell } from "../components/WeeklyDashboardShell";
 import { ExerciseProgressionChart } from "../components/ExerciseProgressionChart";
 import { WorkoutHeatmap } from "../components/WorkoutHeatmap";
+import { PageSkeletonLoader } from "../components/PageSkeletonLoader";
 import type { WorkoutSession, PREntry, MockDay } from "../types/mock";
 
 export default function Dashboard() {
@@ -115,6 +116,10 @@ export default function Dashboard() {
       date: pr.achieved_on,
     };
   });
+
+  if (!state.dataLoaded) {
+    return <PageSkeletonLoader />;
+  }
 
   return (
     <div

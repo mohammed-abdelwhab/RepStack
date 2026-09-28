@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
 import { signUpUser, signInUser } from "../lib/auth";
-import LoadingSpinner from "../components/LoadingSpinner";
 import { StatusAlert } from "../components/StatusAlert";
 
 export default function Auth() {
@@ -46,6 +45,7 @@ export default function Auth() {
             "Account created! Please check your email inbox for a verification link.",
           );
         } else if (data.session) {
+          localStorage.setItem("repstack_last_login", Date.now().toString());
           navigate("/", { replace: true });
         }
       } else {
@@ -53,6 +53,7 @@ export default function Auth() {
         if (err) {
           setError(err.message);
         } else if (data.session) {
+          localStorage.setItem("repstack_last_login", Date.now().toString());
           navigate("/", { replace: true });
         }
       }
@@ -153,24 +154,47 @@ export default function Auth() {
             />
           )}
 
-          {isLoading ? (
-            <div className="flex justify-center py-2">
-              <LoadingSpinner />
-            </div>
-          ) : (
-            <button
-              type="submit"
-              className="w-full font-display font-black uppercase text-sm py-3.5 rounded transition-all active:scale-[0.98] cursor-pointer mt-2"
-              style={{
-                background: "#dfff00",
-                color: "#000000",
-                boxShadow: "0px 4px 12px rgba(223, 255, 0, 0.15)",
-                letterSpacing: "0.05em",
-              }}
-            >
-              {mode === "signIn" ? "SIGN IN" : "REGISTER"}
-            </button>
-          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full font-display font-black uppercase text-sm py-3.5 rounded transition-all active:scale-[0.98] cursor-pointer mt-2 flex items-center justify-center gap-2"
+            style={{
+              background: isLoading ? "rgba(255,255,255,0.04)" : "#dfff00",
+              color: isLoading ? "#565C66" : "#000000",
+              border: isLoading ? "1px solid rgba(255,255,255,0.08)" : "none",
+              boxShadow: isLoading
+                ? "none"
+                : "0px 4px 12px rgba(223, 255, 0, 0.15)",
+              letterSpacing: "0.05em",
+            }}
+          >
+            {isLoading && (
+              <svg
+                className="animate-spin h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+            )}
+            {isLoading
+              ? "SUBMITTING..."
+              : mode === "signIn"
+                ? "SIGN IN"
+                : "REGISTER"}
+          </button>
         </form>
 
         <div className="mt-6 text-center">

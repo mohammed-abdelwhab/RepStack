@@ -19,11 +19,11 @@ export function WorkoutCompletionModal({
   newPRs,
   onClose,
 }: WorkoutCompletionModalProps) {
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(60);
 
   useEffect(() => {
     if (!isOpen) {
-      setCountdown(5);
+      setCountdown(60);
       return;
     }
 
@@ -40,6 +40,13 @@ export function WorkoutCompletionModal({
 
     return () => clearInterval(interval);
   }, [isOpen, onClose]);
+
+  // Scroll to top when modal opens so user sees it immediately
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -63,6 +70,21 @@ export function WorkoutCompletionModal({
             "0 0 35px rgba(223, 255, 0, 0.25), 0 20px 50px rgba(0,0,0,0.9)",
         }}
       >
+        {/* Close ✕ button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+          style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            color: '#e5e2e1',
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
         {/* Glow effect */}
         <div
           className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full pointer-events-none"

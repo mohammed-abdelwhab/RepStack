@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useGymTracker } from "../context/GymTrackerContext";
 import { StatusAlert } from "../components/StatusAlert";
 import { ConfirmationModal } from "../components/ConfirmationModal";
+import { PageSkeletonLoader } from "../components/PageSkeletonLoader";
 
 interface EditableExercise {
   id: number;
@@ -190,6 +191,29 @@ export default function EditWorkout() {
   };
 
   const visibleExercises = exercises.filter((ex) => !ex.isDeleted);
+
+  if (!state.dataLoaded) {
+    return <PageSkeletonLoader />;
+  }
+
+  if (!dbDay) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "#131313" }}
+      >
+        <div className="text-center">
+          <p className="text-steel mb-4">Routine not found.</p>
+          <button
+            onClick={() => navigate("/")}
+            className="underline text-iron font-body cursor-pointer"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -465,15 +489,39 @@ export default function EditWorkout() {
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 font-display font-black uppercase text-sm py-4 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+              className="flex-1 font-display font-black uppercase text-sm py-4 rounded-xl transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
               style={{
-                background: "#dfff00",
-                color: "#000000",
-                boxShadow: "0px 4px 15px rgba(223, 255, 0, 0.15)",
+                background: isLoading ? "rgba(255,255,255,0.04)" : "#dfff00",
+                color: isLoading ? "#565C66" : "#000000",
+                border: isLoading ? "1px solid rgba(255,255,255,0.08)" : "none",
+                boxShadow: isLoading
+                  ? "none"
+                  : "0px 4px 15px rgba(223, 255, 0, 0.15)",
                 letterSpacing: "0.05em",
               }}
             >
-              {isLoading ? "SAVING CHANGES..." : "SAVE ROUTINE"}
+              {isLoading && (
+                <svg
+                  className="animate-spin h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              )}
+              {isLoading ? "SUBMITTING..." : "SAVE ROUTINE"}
             </button>
           </div>
         </form>

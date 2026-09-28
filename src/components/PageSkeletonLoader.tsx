@@ -114,20 +114,6 @@ export function PageSkeletonLoader() {
           </div>
         </div>
       </main>
-
-      {/* ── Bottom Nav Tab Bar Skeleton ────────────────────────────────────── */}
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-40 flex justify-around items-center px-4 py-3"
-        style={{
-          background: "rgba(18, 18, 18, 0.95)",
-          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-        }}
-      >
-        <div className="w-12 h-6 rounded-full bg-zinc-800" />
-        <div className="w-12 h-6 rounded-full bg-zinc-800/50" />
-        <div className="w-12 h-6 rounded-full bg-zinc-800/50" />
-        <div className="w-12 h-6 rounded-full bg-zinc-800/50" />
-      </nav>
     </div>
   );
 }

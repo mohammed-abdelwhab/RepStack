@@ -13,6 +13,7 @@ export interface GymTrackerState {
   setEntries: SetEntry[];
   personalRecords: PersonalRecord[];
   loading: boolean;
+  dataLoaded: boolean;
   error: string | null;
 }
 
@@ -46,7 +47,8 @@ export type GymTrackerAction =
   | {
       type: "LOG_SESSION";
       payload: { session: Session; entries: SetEntry[]; prs: PersonalRecord[] };
-    };
+    }
+  | { type: "RESET_DATA" };
 
 export const initialState: GymTrackerState = {
   workoutDays: [],
@@ -56,6 +58,7 @@ export const initialState: GymTrackerState = {
   setEntries: [],
   personalRecords: [],
   loading: false,
+  dataLoaded: false,
   error: null,
 };
 
@@ -68,12 +71,18 @@ export function gymTrackerReducer(
       return { ...state, loading: true, error: null };
 
     case "SET_ERROR":
-      return { ...state, loading: false, error: action.payload };
+      return {
+        ...state,
+        loading: false,
+        dataLoaded: true,
+        error: action.payload,
+      };
 
     case "SET_ALL_DATA":
       return {
         ...state,
         loading: false,
+        dataLoaded: true,
         error: null,
         workoutDays: action.payload.workoutDays.sort(
           (a, b) => a.sort_order - b.sort_order,
@@ -185,6 +194,9 @@ export function gymTrackerReducer(
         personalRecords: updatedPRs,
       };
     }
+
+    case "RESET_DATA":
+      return initialState;
 
     default:
       return state;

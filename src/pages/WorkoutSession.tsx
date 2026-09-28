@@ -6,6 +6,7 @@ import { ExerciseCard } from "../components/ExerciseCard";
 import { ToastNotification } from "../components/ToastNotification";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { WorkoutCompletionModal } from "../components/WorkoutCompletionModal";
+import { PageSkeletonLoader } from "../components/PageSkeletonLoader";
 import type { AlertVariant } from "../components/StatusAlert";
 import {
   getLastPerformanceForExercise,
@@ -31,6 +32,7 @@ export default function WorkoutSession() {
     message: string;
   } | null>(null);
   const [isLogged, setIsLogged] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Completion modal state
   const [completionData, setCompletionData] = useState<{
@@ -400,10 +402,15 @@ export default function WorkoutSession() {
         title: "Failed to Save Workout",
         message: err?.message || "Could not log workout. Please try again.",
       });
+      setIsSubmitting(false);
     }
   };
 
   // Render guards
+  if (!state.dataLoaded) {
+    return <PageSkeletonLoader />;
+  }
+
   if (!dbDay) {
     return (
       <div
@@ -664,20 +671,52 @@ export default function WorkoutSession() {
             </button>
 
             <button
-              disabled={isLogged}
+              disabled={isLogged || isSubmitting}
               onClick={handleLogWorkout}
-              className="flex-1 rounded-xl py-3.5 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-xl"
+              className="flex-1 rounded-xl py-3.5 font-display font-black text-sm uppercase transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-xl flex items-center justify-center gap-2"
               style={{
-                background: isLogged ? "rgba(255,255,255,0.04)" : "#dfff00",
-                color: isLogged ? "#565C66" : "#000000",
-                border: isLogged ? "1px solid rgba(255,255,255,0.08)" : "none",
-                boxShadow: isLogged
-                  ? "none"
-                  : "0px 6px 20px rgba(223, 255, 0, 0.25)",
+                background:
+                  isLogged || isSubmitting
+                    ? "rgba(255,255,255,0.04)"
+                    : "#dfff00",
+                color: isLogged || isSubmitting ? "#565C66" : "#000000",
+                border:
+                  isLogged || isSubmitting
+                    ? "1px solid rgba(255,255,255,0.08)"
+                    : "none",
+                boxShadow:
+                  isLogged || isSubmitting
+                    ? "none"
+                    : "0px 6px 20px rgba(223, 255, 0, 0.25)",
                 letterSpacing: "0.05em",
               }}
             >
-              {isLogged ? "✓ WORKOUT LOGGED" : `LOG ${dbDay.name} WORKOUT`}
+              {isSubmitting && (
+                <svg
+                  className="animate-spin h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+              )}
+              {isSubmitting
+                ? "SUBMITTING..."
+                : isLogged
+                  ? "✓ WORKOUT LOGGED"
+                  : `LOG ${dbDay.name} WORKOUT`}
             </button>
           </div>
         )}

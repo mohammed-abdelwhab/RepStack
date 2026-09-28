@@ -84,8 +84,22 @@ export function GymTrackerProvider({
   };
 
   useEffect(() => {
-    // 1. Initial auth state check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 1. Initial auth state check + 24-hour session expiry
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        // Check if session is older than 24 hours
+        const lastLogin = localStorage.getItem("repstack_last_login");
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+        if (lastLogin && Date.now() - Number(lastLogin) > TWENTY_FOUR_HOURS) {
+          // Session expired — sign out and clear timestamp
+          localStorage.removeItem("repstack_last_login");
+          await supabase.auth.signOut();
+          setUser(null);
+          setAuthLoading(false);
+          return;
+        }
+      }
+
       setUser(session?.user ?? null);
       setAuthLoading(false);
       if (session?.user) {
@@ -249,6 +263,7 @@ export function GymTrackerProvider({
   };
 
   const logout = async () => {
+    localStorage.removeItem("repstack_last_login");
     await supabase.auth.signOut();
   };
 
