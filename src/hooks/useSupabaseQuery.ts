@@ -168,21 +168,42 @@ export async function addExercise(
   };
 }
 
-// Update an exercise details
+// Update an exercise details (and optionally sort order)
 export async function updateExercise(
   exerciseId: number,
   name: string,
   notes: string,
+  sortOrder?: number,
 ): Promise<Exercise> {
+  const payload: { name: string; notes: string; sort_order?: number } = {
+    name,
+    notes,
+  };
+  if (sortOrder !== undefined) {
+    payload.sort_order = sortOrder;
+  }
+
   const { data, error } = await supabase
     .from("exercises")
-    .update({ name, notes })
+    .update(payload)
     .eq("id", exerciseId)
     .select()
     .single();
 
   if (error) throw error;
   return data as Exercise;
+}
+
+// Update single exercise sort order
+export async function updateExerciseOrder(
+  exerciseId: number,
+  sortOrder: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from("exercises")
+    .update({ sort_order: sortOrder })
+    .eq("id", exerciseId);
+  if (error) throw error;
 }
 
 // Remove an exercise (cascading deletes config in DB)

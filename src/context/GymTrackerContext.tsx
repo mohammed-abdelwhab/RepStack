@@ -32,6 +32,7 @@ interface GymTrackerContextType {
     exerciseId: number,
     name: string,
     notes: string,
+    sortOrder?: number,
   ) => Promise<void>;
   removeExercise: (exerciseId: number) => Promise<void>;
   updateExerciseConfig: (
@@ -44,6 +45,7 @@ interface GymTrackerContextType {
     sets: Omit<SetEntry, "id" | "session_id">[],
     durationSeconds?: number,
   ) => Promise<void>;
+  reorderExercises: (orderedExerciseIds: number[]) => Promise<void>;
   logout: () => Promise<void>;
   loadData: () => Promise<void>;
 }
@@ -205,10 +207,16 @@ export function GymTrackerProvider({
     exerciseId: number,
     name: string,
     notes: string,
+    sortOrder?: number,
   ) => {
     dispatch({ type: "START_LOADING" });
     try {
-      const exercise = await db.updateExercise(exerciseId, name, notes);
+      const exercise = await db.updateExercise(
+        exerciseId,
+        name,
+        notes,
+        sortOrder,
+      );
       dispatch({ type: "UPDATE_EXERCISE", payload: exercise });
     } catch (err: any) {
       dispatch({ type: "SET_ERROR", payload: err.message });
@@ -262,6 +270,20 @@ export function GymTrackerProvider({
     }
   };
 
+  const reorderExercises = async (orderedExerciseIds: number[]) => {
+    dispatch({ type: "REORDER_EXERCISES", payload: orderedExerciseIds });
+    try {
+      await Promise.all(
+        orderedExerciseIds.map((id, index) =>
+          db.updateExerciseOrder(id, index),
+        ),
+      );
+    } catch (err: any) {
+      console.error("Failed to persist exercise order to database", err);
+      loadData();
+    }
+  };
+
   const logout = async () => {
     localStorage.removeItem("repstack_last_login");
     await supabase.auth.signOut();
@@ -281,6 +303,7 @@ export function GymTrackerProvider({
         removeExercise,
         updateExerciseConfig,
         logSession,
+        reorderExercises,
         logout,
         loadData,
       }}

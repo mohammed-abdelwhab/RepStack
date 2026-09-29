@@ -116,40 +116,76 @@ export function WorkoutHeatmap({
       weekColumns.push(daysArray.slice(w * 7, (w + 1) * 7));
     }
 
-    // Calculate Current Streak & Longest Streak
+    // Calculate Current Streak & Longest Streak with up to 2 rest days allowed
     let currentStreak = 0;
     let longestStreak = 0;
-    let tempStreak = 0;
 
-    // Iterate backwards from today to find current streak
+    // 1. Current Streak: scan backwards from today
     const reversed = [...daysArray].reverse();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+    let firstWorkoutIndex = -1;
 
-    const streakActive =
-      (activityByDate.get(todayStr)?.count || 0) > 0 ||
-      (activityByDate.get(yesterdayStr)?.count || 0) > 0;
+    for (let i = 0; i < reversed.length; i++) {
+      if (reversed[i].count > 0) {
+        firstWorkoutIndex = i;
+        break;
+      }
+    }
 
-    if (streakActive) {
-      for (const day of reversed) {
-        if (day.count > 0) {
-          currentStreak++;
+    // Streak is active only if the most recent workout was today (0d), yesterday (1d), or 2 days ago (2d rest)
+    if (firstWorkoutIndex !== -1 && firstWorkoutIndex <= 2) {
+      currentStreak = 1;
+      let restGap = 0;
+
+      for (let i = firstWorkoutIndex + 1; i < reversed.length; i++) {
+        if (reversed[i].count > 0) {
+          if (restGap <= 2) {
+            currentStreak++;
+            restGap = 0;
+          } else {
+            break;
+          }
         } else {
-          if (day.dateStr === todayStr) continue;
-          break;
+          restGap++;
+          if (restGap > 2) {
+            break;
+          }
         }
       }
     }
 
-    // Longest streak
+    // 2. Longest Streak across all 52 weeks (allowing <= 2 consecutive rest days)
+    let tempStreak = 0;
+    let tempRestGap = 0;
+    let inStreak = false;
+
     for (const day of daysArray) {
       if (day.count > 0) {
-        tempStreak++;
-        if (tempStreak > longestStreak) longestStreak = tempStreak;
+        if (inStreak) {
+          if (tempRestGap <= 2) {
+            tempStreak++;
+            tempRestGap = 0;
+          } else {
+            tempStreak = 1;
+            tempRestGap = 0;
+          }
+        } else {
+          inStreak = true;
+          tempStreak = 1;
+          tempRestGap = 0;
+        }
+
+        if (tempStreak > longestStreak) {
+          longestStreak = tempStreak;
+        }
       } else {
-        tempStreak = 0;
+        if (inStreak) {
+          tempRestGap++;
+          if (tempRestGap > 2) {
+            inStreak = false;
+            tempStreak = 0;
+            tempRestGap = 0;
+          }
+        }
       }
     }
 
@@ -237,8 +273,11 @@ export function WorkoutHeatmap({
             }}
           >
             <span className="text-xs">🔥</span>
-            <span className="font-mono text-xs font-bold text-[#dfff00]">
-              {stats.currentStreak} Day{stats.currentStreak === 1 ? "" : "s"}{" "}
+            <span
+              title="Current streak of workouts (allows up to 2 rest days between sessions)"
+              className="font-mono text-xs font-bold text-[#dfff00]"
+            >
+              {stats.currentStreak} Workout{stats.currentStreak === 1 ? "" : "s"}{" "}
               Streak
             </span>
           </div>

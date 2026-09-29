@@ -11,15 +11,88 @@ const PRESETS = [30, 60, 90, 120, 180, 300] as const; // 30s, 1m, 1.5m, 2m, 3m, 
 const RADIUS = 38;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+interface RestTimerStorage {
+  targetEpoch: number;
+  totalSeconds: number;
+  isRunning: boolean;
+  remainingSeconds: number;
+}
+
 export function RestTimer({
   defaultSeconds,
   onClose,
   onDefaultChange,
 }: RestTimerProps) {
-  const [totalSeconds, setTotalSeconds] = useState(defaultSeconds);
-  const [remaining, setRemaining] = useState(defaultSeconds);
-  const [isRunning, setIsRunning] = useState(true);
-  const [isDone, setIsDone] = useState(false);
+  // Initialize state from localStorage if available
+  const [totalSeconds, setTotalSeconds] = useState(() => {
+    try {
+      const saved = localStorage.getItem("repstack_rest_timer");
+      if (saved) {
+        const parsed: RestTimerStorage = JSON.parse(saved);
+        return parsed.totalSeconds || defaultSeconds;
+      }
+    } catch {}
+    return defaultSeconds;
+  });
+
+  const [remaining, setRemaining] = useState(() => {
+    try {
+      const saved = localStorage.getItem("repstack_rest_timer");
+      if (saved) {
+        const parsed: RestTimerStorage = JSON.parse(saved);
+        if (parsed.isRunning) {
+          const rem = Math.max(
+            0,
+            Math.ceil((parsed.targetEpoch - Date.now()) / 1000),
+          );
+          return rem;
+        }
+        return parsed.remainingSeconds || defaultSeconds;
+      }
+    } catch {}
+    return defaultSeconds;
+  });
+
+  const [isRunning, setIsRunning] = useState(() => {
+    try {
+      const saved = localStorage.getItem("repstack_rest_timer");
+      if (saved) {
+        const parsed: RestTimerStorage = JSON.parse(saved);
+        if (parsed.isRunning) {
+          return parsed.targetEpoch > Date.now();
+        }
+        return false;
+      }
+    } catch {}
+    return true;
+  });
+
+  const [targetEpoch, setTargetEpoch] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem("repstack_rest_timer");
+      if (saved) {
+        const parsed: RestTimerStorage = JSON.parse(saved);
+        if (parsed.isRunning && parsed.targetEpoch) {
+          return parsed.targetEpoch;
+        }
+      }
+    } catch {}
+    return Date.now() + defaultSeconds * 1000;
+  });
+
+  const [isDone, setIsDone] = useState(() => {
+    try {
+      const saved = localStorage.getItem("repstack_rest_timer");
+      if (saved) {
+        const parsed: RestTimerStorage = JSON.parse(saved);
+        if (parsed.isRunning && parsed.targetEpoch <= Date.now()) {
+          return true;
+        }
+      }
+    } catch {}
+    return false;
+  });
+
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customVal, setCustomVal] = useState("");
   const [soundMuted, setSoundMuted] = useState(false);
@@ -31,38 +104,71 @@ export function RestTimer({
     setSoundMuted(!soundMuted);
   };
 
-  // Countdown cycle
+  // Wall-clock countdown cycle
   useEffect(() => {
     if (!isRunning) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
 
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
-          setIsRunning(false);
-          setIsDone(true);
-          soundEffects.playRestDoneChime();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const checkTime = () => {
+      const now = Date.now();
+      const rem = Math.max(0, Math.ceil((targetEpoch - now) / 1000));
+      setRemaining(rem);
+
+      if (rem <= 0) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setIsRunning(false);
+        setIsDone(true);
+        soundEffects.playRestDoneChime();
+        localStorage.setItem(
+          "repstack_rest_timer",
+          JSON.stringify({
+            targetEpoch,
+            totalSeconds,
+            isRunning: false,
+            remainingSeconds: 0,
+          }),
+        );
+      }
+    };
+
+    checkTime();
+    intervalRef.current = setInterval(checkTime, 1000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning]);
+  }, [isRunning, targetEpoch, totalSeconds]);
 
-  const reset = useCallback((seconds: number) => {
+  const reset = useCallback(
+    (seconds: number) => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      const newTarget = Date.now() + seconds * 1000;
+      setTotalSeconds(seconds);
+      setRemaining(seconds);
+      setTargetEpoch(newTarget);
+      setIsDone(false);
+      setIsRunning(true);
+
+      localStorage.setItem(
+        "repstack_rest_timer",
+        JSON.stringify({
+          targetEpoch: newTarget,
+          totalSeconds: seconds,
+          isRunning: true,
+          remainingSeconds: seconds,
+        }),
+      );
+    },
+    [],
+  );
+
+  const handleClose = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    setTotalSeconds(seconds);
-    setRemaining(seconds);
-    setIsDone(false);
-    setIsRunning(true);
-  }, []);
+    localStorage.removeItem("repstack_rest_timer");
+    onClose();
+  };
 
   const handlePreset = (sec: number) => {
     onDefaultChange(sec);
@@ -81,11 +187,55 @@ export function RestTimer({
   const handleAddThirty = () => {
     const newRemaining = remaining + 30;
     const newTotal = totalSeconds + 30;
+    const newTarget = Date.now() + newRemaining * 1000;
+
     if (intervalRef.current) clearInterval(intervalRef.current);
     setTotalSeconds(newTotal);
     setRemaining(newRemaining);
+    setTargetEpoch(newTarget);
     setIsDone(false);
     setIsRunning(true);
+
+    localStorage.setItem(
+      "repstack_rest_timer",
+      JSON.stringify({
+        targetEpoch: newTarget,
+        totalSeconds: newTotal,
+        isRunning: true,
+        remainingSeconds: newRemaining,
+      }),
+    );
+  };
+
+  const handleToggleRunning = () => {
+    if (isDone) return;
+    if (isRunning) {
+      // Pause
+      setIsRunning(false);
+      localStorage.setItem(
+        "repstack_rest_timer",
+        JSON.stringify({
+          targetEpoch,
+          totalSeconds,
+          isRunning: false,
+          remainingSeconds: remaining,
+        }),
+      );
+    } else {
+      // Resume
+      const newTarget = Date.now() + remaining * 1000;
+      setTargetEpoch(newTarget);
+      setIsRunning(true);
+      localStorage.setItem(
+        "repstack_rest_timer",
+        JSON.stringify({
+          targetEpoch: newTarget,
+          totalSeconds,
+          isRunning: true,
+          remainingSeconds: remaining,
+        }),
+      );
+    }
   };
 
   const progress = totalSeconds > 0 ? remaining / totalSeconds : 0;
@@ -285,16 +435,14 @@ export function RestTimer({
             +30s
           </button>
           <button
-            onClick={() => {
-              if (!isDone) setIsRunning((v) => !v);
-            }}
+            onClick={handleToggleRunning}
             title={isRunning ? "Pause" : "Resume"}
             className="font-body text-xs rounded-lg px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-white cursor-pointer border border-white/10"
           >
             {isRunning ? "⏸" : "▶"}
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             title="Close rest timer"
             className="font-body text-xs rounded-lg px-2 py-1 bg-zinc-800/60 hover:bg-zinc-700 text-steel hover:text-white cursor-pointer"
           >

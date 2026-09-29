@@ -7,6 +7,8 @@ import { ToastNotification } from "../components/ToastNotification";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { WorkoutCompletionModal } from "../components/WorkoutCompletionModal";
 import { PageSkeletonLoader } from "../components/PageSkeletonLoader";
+import { RestTimer } from "../components/RestTimer";
+import { ReorderExercisesModal } from "../components/ReorderExercisesModal";
 import type { AlertVariant } from "../components/StatusAlert";
 import {
   getLastPerformanceForExercise,
@@ -22,7 +24,7 @@ import type { SetEntry } from "../schemas/setEntries";
 export default function WorkoutSession() {
   const { dayId } = useParams<{ dayId: string }>();
   const navigate = useNavigate();
-  const { state, logSession } = useGymTracker();
+  const { state, logSession, reorderExercises } = useGymTracker();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [isConfirmCancelOpen, setIsConfirmCancelOpen] = useState(false);
@@ -41,8 +43,34 @@ export default function WorkoutSession() {
     totalVolume: number;
     totalSets: number;
     exercisesCompleted: number;
+    durationSeconds: number;
     newPRs: { exerciseName: string; weight: number; reps: number }[];
   } | null>(null);
+
+  // Session elapsed timer (wall-clock based)
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
+    const startStr = localStorage.getItem(`repstack_workout_start_${dayId}`);
+    if (startStr) {
+      return Math.max(0, Math.floor((Date.now() - Number(startStr)) / 1000));
+    }
+    return 0;
+  });
+
+  // Rest timer state
+  const [isRestTimerOpen, setIsRestTimerOpen] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("repstack_rest_timer");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.isRunning && parsed.targetEpoch > Date.now();
+      }
+    } catch {}
+    return false;
+  });
+  const [restDefaultSeconds, setRestDefaultSeconds] = useState<number>(90);
+
+  // Reorder exercises modal state
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState<boolean>(false);
 
   // ── Workout Active State ──────────────────────────────────────────────────
   const [isWorkoutStarted, setIsWorkoutStarted] = useState<boolean>(() => {
@@ -139,9 +167,47 @@ export default function WorkoutSession() {
     [dayId],
   );
 
+  // ── Wall-Clock Session Elapsed Timer ─────────────────────────────────────
+  useEffect(() => {
+    if (!isWorkoutStarted) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const startStr = localStorage.getItem(`repstack_workout_start_${dayId}`);
+    const startTime = startStr ? Number(startStr) : Date.now();
+    if (!startStr) {
+      localStorage.setItem(
+        `repstack_workout_start_${dayId}`,
+        startTime.toString(),
+      );
+    }
+
+    const updateTimer = () => {
+      const now = Date.now();
+      setElapsedSeconds(Math.max(0, Math.floor((now - startTime) / 1000)));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [isWorkoutStarted, dayId]);
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) {
+      return `${hrs}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
   const handleStartWorkout = () => {
+    const now = Date.now();
     setIsWorkoutStarted(true);
     localStorage.setItem(`repstack_workout_active_${dayId}`, "true");
+    localStorage.setItem(`repstack_workout_start_${dayId}`, now.toString());
     localStorage.setItem(
       `repstack_draft_${dayId}`,
       JSON.stringify(draftExercises),
@@ -151,10 +217,49 @@ export default function WorkoutSession() {
   const handleConfirmCancel = () => {
     setIsWorkoutStarted(false);
     localStorage.removeItem(`repstack_workout_active_${dayId}`);
+    localStorage.removeItem(`repstack_workout_start_${dayId}`);
     localStorage.removeItem(`repstack_draft_${dayId}`);
     setIsConfirmCancelOpen(false);
     navigate("/");
   };
+
+  // ── Exercise Reordering Handlers ──────────────────────────────────────────
+  const handleMoveExercise = useCallback(
+    (exerciseId: string, direction: "up" | "down") => {
+      updateAndPersistDraft((prev) => {
+        const idx = prev.findIndex((e) => e.id === exerciseId);
+        if (idx === -1) return prev;
+        const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= prev.length) return prev;
+        const copy = [...prev];
+        const temp = copy[idx];
+        copy[idx] = copy[targetIdx];
+        copy[targetIdx] = temp;
+        return copy;
+      });
+    },
+    [updateAndPersistDraft],
+  );
+
+  const handleSaveReorder = useCallback(
+    async (orderedIds: (string | number)[]) => {
+      updateAndPersistDraft((prev) => {
+        const map = new Map(prev.map((e) => [String(e.id), e]));
+        const reordered = orderedIds
+          .map((id) => map.get(String(id)))
+          .filter(Boolean) as MockExercise[];
+        return reordered;
+      });
+
+      // Also persist to DB in background
+      try {
+        await reorderExercises(orderedIds.map((id) => Number(id)));
+      } catch (e) {
+        console.error("Failed to persist reorder to DB", e);
+      }
+    },
+    [updateAndPersistDraft, reorderExercises],
+  );
 
   // ── Callbacks for Exercise Inputs & Checkboxes ─────────────────────────────
 
@@ -379,10 +484,16 @@ export default function WorkoutSession() {
     });
 
     try {
-      await logSession(dbDay.id, performedOn, entriesToSave, 0);
+      const startStr = localStorage.getItem(`repstack_workout_start_${dayId}`);
+      const durationSeconds = startStr
+        ? Math.max(0, Math.floor((Date.now() - Number(startStr)) / 1000))
+        : elapsedSeconds;
+
+      await logSession(dbDay.id, performedOn, entriesToSave, durationSeconds);
 
       // Clean up local storage
       localStorage.removeItem(`repstack_workout_active_${dayId}`);
+      localStorage.removeItem(`repstack_workout_start_${dayId}`);
       localStorage.removeItem(`repstack_draft_${dayId}`);
       setIsWorkoutStarted(false);
       setIsLogged(true);
@@ -394,6 +505,7 @@ export default function WorkoutSession() {
         totalVolume: totalVol,
         totalSets: totalSetsCount,
         exercisesCompleted: exercisesCount,
+        durationSeconds,
         newPRs: brokenPRs,
       });
     } catch (err: any) {
@@ -564,15 +676,26 @@ export default function WorkoutSession() {
                 </p>
               </div>
 
-              <span
-                className="font-mono text-[10px] px-2.5 py-1 rounded-md text-steel"
-                style={{
-                  background: "rgba(255, 255, 255, 0.04)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                }}
-              >
-                👁️ View Only
-              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsReorderModalOpen(true)}
+                  className="font-mono text-xs px-2.5 py-1 rounded-md text-steel hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors cursor-pointer flex items-center gap-1"
+                  title="Reorder exercises"
+                >
+                  <span>⇅</span>
+                  <span>Reorder</span>
+                </button>
+                <span
+                  className="font-mono text-[10px] px-2.5 py-1 rounded-md text-steel"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  👁️ View Only
+                </span>
+              </div>
             </div>
 
             {/* Prominent TOP Start Workout Button */}
@@ -591,32 +714,70 @@ export default function WorkoutSession() {
             </button>
           </div>
         ) : (
-          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <div>
-              <h2 className="font-display font-black text-2xl text-white">
-                {dbDay.name}
-              </h2>
-              <p className="font-body text-xs text-steel mt-0.5">
-                {draftExercises.length} exercise
-                {draftExercises.length === 1 ? "" : "s"} in session
-              </p>
+          <div className="px-4 pt-4 pb-2 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-black text-2xl text-white">
+                  {dbDay.name}
+                </h2>
+                <p className="font-body text-xs text-steel mt-0.5">
+                  {draftExercises.length} exercise
+                  {draftExercises.length === 1 ? "" : "s"} in session
+                </p>
+              </div>
+
+              {/* Live Session Timer HUD */}
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl font-mono text-xs font-bold"
+                style={{
+                  background: "rgba(223, 255, 0, 0.1)",
+                  border: "1px solid rgba(223, 255, 0, 0.35)",
+                  boxShadow: "0 0 15px rgba(223, 255, 0, 0.15)",
+                }}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#dfff00] animate-pulse" />
+                <span className="text-[#dfff00] font-black text-sm tracking-wider">
+                  {formatDuration(elapsedSeconds)}
+                </span>
+              </div>
             </div>
 
-            <span
-              className="font-mono text-[10px] px-2.5 py-1 rounded-md text-[#dfff00] font-bold"
-              style={{
-                background: "rgba(223, 255, 0, 0.12)",
-                border: "1px solid rgba(223, 255, 0, 0.3)",
-              }}
-            >
-              ● LIVE SESSION
-            </span>
+            {/* In-Session Quick Tools: Rest Timer & Reorder */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRestTimerOpen((v) => !v)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-mono text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
+                style={{
+                  background: isRestTimerOpen
+                    ? "rgba(223, 255, 0, 0.15)"
+                    : "rgba(255, 255, 255, 0.05)",
+                  border: isRestTimerOpen
+                    ? "1px solid #dfff00"
+                    : "1px solid rgba(255, 255, 255, 0.1)",
+                  color: isRestTimerOpen ? "#dfff00" : "#e5e2e1",
+                }}
+              >
+                <span>⏱️</span>
+                <span>Rest Timer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsReorderModalOpen(true)}
+                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-mono text-xs font-semibold bg-white/5 hover:bg-white/10 text-steel hover:text-white border border-white/10 transition-all active:scale-[0.98] cursor-pointer"
+                title="Reorder exercises"
+              >
+                <span>⇅</span>
+                <span>Reorder</span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Exercises */}
         <div className="flex flex-col gap-4 px-4 pb-4 mt-2">
-          {draftExercises.map((exercise) => {
+          {draftExercises.map((exercise, idx) => {
             const globalPR = getGlobalPRForExercise(
               exercise.name,
               state.exercises,
@@ -642,6 +803,11 @@ export default function WorkoutSession() {
                 onNotesChange={handleNotesChange}
                 onToggleSetComplete={handleToggleSetComplete}
                 onToggleExerciseComplete={handleToggleExerciseComplete}
+                onMoveUp={() => handleMoveExercise(exercise.id, "up")}
+                onMoveDown={() => handleMoveExercise(exercise.id, "down")}
+                canMoveUp={idx > 0}
+                canMoveDown={idx < draftExercises.length - 1}
+                onTriggerRestTimer={() => setIsRestTimerOpen(true)}
               />
             );
           })}
@@ -752,6 +918,7 @@ export default function WorkoutSession() {
           totalVolume={completionData.totalVolume}
           totalSets={completionData.totalSets}
           exercisesCompleted={completionData.exercisesCompleted}
+          durationSeconds={completionData.durationSeconds}
           newPRs={completionData.newPRs}
           onClose={() => {
             setCompletionData(null);
@@ -759,6 +926,23 @@ export default function WorkoutSession() {
           }}
         />
       )}
+
+      {/* Persistent Wall-Clock Rest Timer Overlay */}
+      {isRestTimerOpen && (
+        <RestTimer
+          defaultSeconds={restDefaultSeconds}
+          onClose={() => setIsRestTimerOpen(false)}
+          onDefaultChange={(sec) => setRestDefaultSeconds(sec)}
+        />
+      )}
+
+      {/* Reorder Exercises Modal */}
+      <ReorderExercisesModal
+        isOpen={isReorderModalOpen}
+        exercises={draftExercises.map((e) => ({ id: e.id, name: e.name }))}
+        onSave={handleSaveReorder}
+        onClose={() => setIsReorderModalOpen(false)}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useGymTracker } from "../context/GymTrackerContext";
 import { StatusAlert } from "../components/StatusAlert";
 import { ConfirmationModal } from "../components/ConfirmationModal";
 import { PageSkeletonLoader } from "../components/PageSkeletonLoader";
+import { ReorderExercisesModal } from "../components/ReorderExercisesModal";
 
 interface EditableExercise {
   id: number;
@@ -35,6 +36,7 @@ export default function EditWorkout() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   // Populate local form state
   useEffect(() => {
@@ -110,6 +112,40 @@ export default function EditWorkout() {
     );
   };
 
+  const handleMoveExerciseRow = (id: number, direction: "up" | "down") => {
+    setExercises((prev) => {
+      const active = prev.filter((e) => !e.isDeleted);
+      const activeIdx = active.findIndex((e) => e.id === id);
+      if (activeIdx === -1) return prev;
+      const targetActiveIdx =
+        direction === "up" ? activeIdx - 1 : activeIdx + 1;
+      if (targetActiveIdx < 0 || targetActiveIdx >= active.length) return prev;
+
+      const fromRealIdx = prev.findIndex((e) => e.id === active[activeIdx].id);
+      const toRealIdx = prev.findIndex(
+        (e) => e.id === active[targetActiveIdx].id,
+      );
+      if (fromRealIdx === -1 || toRealIdx === -1) return prev;
+
+      const copy = [...prev];
+      const temp = copy[fromRealIdx];
+      copy[fromRealIdx] = copy[toRealIdx];
+      copy[toRealIdx] = temp;
+      return copy;
+    });
+  };
+
+  const handleSaveReorder = (orderedIds: (string | number)[]) => {
+    setExercises((prev) => {
+      const map = new Map(prev.map((e) => [String(e.id), e]));
+      const reordered = orderedIds
+        .map((id) => map.get(String(id)))
+        .filter(Boolean) as EditableExercise[];
+      const deleted = prev.filter((e) => e.isDeleted);
+      return [...reordered, ...deleted];
+    });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!routineName.trim()) {
@@ -133,7 +169,8 @@ export default function EditWorkout() {
         await updateWorkoutDay(dbDay.id, routineName.trim());
       }
 
-      // 2. Loop through exercises and apply changes
+      // 2. Loop through exercises and apply changes with sequential sort_order
+      let sortIdx = 0;
       for (const ex of exercises) {
         if (ex.isDeleted) {
           if (!ex.isNew) {
@@ -146,16 +183,24 @@ export default function EditWorkout() {
             ex.notes.trim(),
             ex.workingSetCount,
           );
+          sortIdx++;
         } else {
-          // Existing exercises: check if name/notes changed
+          // Existing exercises: check if name/notes or sort_order changed
           const origEx = state.exercises.find((orig) => orig.id === ex.id);
           if (
             origEx &&
             (origEx.name !== ex.name.trim() ||
-              (origEx.notes || "") !== ex.notes.trim())
+              (origEx.notes || "") !== ex.notes.trim() ||
+              origEx.sort_order !== sortIdx)
           ) {
-            await updateExercise(ex.id, ex.name.trim(), ex.notes.trim());
+            await updateExercise(
+              ex.id,
+              ex.name.trim(),
+              ex.notes.trim(),
+              sortIdx,
+            );
           }
+          sortIdx++;
 
           // Check if config sets count changed
           const origConfig = state.exerciseConfigs.find(
@@ -292,18 +337,30 @@ export default function EditWorkout() {
               <h2 className="font-display text-sm font-bold text-white uppercase tracking-wider">
                 Exercises
               </h2>
-              <button
-                type="button"
-                onClick={handleAddExerciseRow}
-                className="font-body font-semibold text-xs px-3 py-1.5 rounded transition-all cursor-pointer"
-                style={{
-                  background: "rgba(255, 255, 255, 0.04)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  color: "#dfff00",
-                }}
-              >
-                + ADD EXERCISE
-              </button>
+              <div className="flex items-center gap-2">
+                {visibleExercises.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsReorderModalOpen(true)}
+                    className="font-body font-semibold text-xs px-3 py-1.5 rounded transition-all cursor-pointer bg-white/5 hover:bg-white/10 text-steel hover:text-white border border-white/10 flex items-center gap-1"
+                  >
+                    <span>⇅</span>
+                    <span>REORDER</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddExerciseRow}
+                  className="font-body font-semibold text-xs px-3 py-1.5 rounded transition-all cursor-pointer"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    color: "#dfff00",
+                  }}
+                >
+                  + ADD EXERCISE
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-4">
@@ -329,9 +386,45 @@ export default function EditWorkout() {
                   >
                     {/* Row Header */}
                     <div className="flex justify-between items-center">
-                      <span className="font-mono text-xs text-steel">
-                        #{idx + 1} {ex.isNew ? "(New)" : ""}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-[#dfff00]">
+                          #{idx + 1}
+                        </span>
+                        {ex.isNew && (
+                          <span className="font-mono text-[10px] text-steel">
+                            (New)
+                          </span>
+                        )}
+                        {/* Quick Reorder Arrows */}
+                        <div className="flex items-center gap-0.5 ml-1">
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveExerciseRow(ex.id, "up")}
+                            className={`w-6 h-6 rounded flex items-center justify-center font-mono text-[10px] transition-colors cursor-pointer ${
+                              idx === 0
+                                ? "text-steel/20 bg-transparent cursor-not-allowed"
+                                : "text-steel hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                            }`}
+                            title="Move up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === visibleExercises.length - 1}
+                            onClick={() => handleMoveExerciseRow(ex.id, "down")}
+                            className={`w-6 h-6 rounded flex items-center justify-center font-mono text-[10px] transition-colors cursor-pointer ${
+                              idx === visibleExercises.length - 1
+                                ? "text-steel/20 bg-transparent cursor-not-allowed"
+                                : "text-steel hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                            }`}
+                            title="Move down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveExerciseRow(ex.id, ex.isNew)}
@@ -537,6 +630,17 @@ export default function EditWorkout() {
         isDestructive={true}
         onConfirm={executeDeleteRoutine}
         onCancel={() => setIsConfirmDeleteOpen(false)}
+      />
+
+      {/* Reorder Exercises Modal */}
+      <ReorderExercisesModal
+        isOpen={isReorderModalOpen}
+        exercises={visibleExercises.map((ex) => ({
+          id: ex.id,
+          name: ex.name || "Untitled Exercise",
+        }))}
+        onSave={handleSaveReorder}
+        onClose={() => setIsReorderModalOpen(false)}
       />
     </div>
   );

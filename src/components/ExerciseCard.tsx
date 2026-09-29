@@ -27,6 +27,11 @@ interface ExerciseCardProps {
     isWarmup?: boolean,
   ) => void;
   onToggleExerciseComplete?: (exerciseId: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onTriggerRestTimer?: () => void;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -297,6 +302,11 @@ export function ExerciseCard({
   onNotesChange,
   onToggleSetComplete,
   onToggleExerciseComplete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+  onTriggerRestTimer,
 }: ExerciseCardProps) {
   const [warmupOpen, setWarmupOpen] = useState(false);
   const [isWarmupAdded, setIsWarmupAdded] = useState(false);
@@ -418,26 +428,73 @@ export function ExerciseCard({
           </div>
         </div>
 
-        {/* Header Action: Mark Exercise Done Toggle in Live Mode */}
-        {isEditMode && onToggleExerciseComplete && (
-          <button
-            type="button"
-            onClick={() => onToggleExerciseComplete(exercise.id)}
-            className="flex items-center gap-1 font-mono text-[11px] px-2.5 py-1.5 rounded-lg transition-all duration-150 active:scale-95 cursor-pointer flex-shrink-0"
-            style={{
-              background: isExerciseDone
-                ? "#dfff00"
-                : "rgba(255, 255, 255, 0.05)",
-              border: isExerciseDone
-                ? "1px solid #dfff00"
-                : "1px solid rgba(255, 255, 255, 0.12)",
-              color: isExerciseDone ? "#000000" : "#e5e2e1",
-              fontWeight: isExerciseDone ? 800 : 500,
-            }}
-          >
-            <span>{isExerciseDone ? "✓ Completed" : "Mark Done"}</span>
-          </button>
-        )}
+        {/* Header Actions */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Quick-Shift Reorder Arrows */}
+          {(onMoveUp || onMoveDown) && (
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                disabled={!canMoveUp}
+                onClick={onMoveUp}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-[10px] transition-colors cursor-pointer ${
+                  !canMoveUp
+                    ? "text-steel/20 bg-transparent cursor-not-allowed"
+                    : "text-steel hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                }`}
+                title="Move exercise up"
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                disabled={!canMoveDown}
+                onClick={onMoveDown}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center font-mono text-[10px] transition-colors cursor-pointer ${
+                  !canMoveDown
+                    ? "text-steel/20 bg-transparent cursor-not-allowed"
+                    : "text-steel hover:text-white bg-white/5 hover:bg-white/10 border border-white/10"
+                }`}
+                title="Move exercise down"
+              >
+                ▼
+              </button>
+            </div>
+          )}
+
+          {/* Quick Rest Timer Trigger */}
+          {onTriggerRestTimer && isEditMode && (
+            <button
+              type="button"
+              onClick={onTriggerRestTimer}
+              className="w-7 h-7 rounded-lg flex items-center justify-center font-mono text-xs bg-white/5 hover:bg-white/10 text-steel hover:text-[#dfff00] border border-white/10 cursor-pointer transition-colors"
+              title="Start Rest Timer"
+            >
+              ⏱️
+            </button>
+          )}
+
+          {/* Mark Exercise Done Toggle in Live Mode */}
+          {isEditMode && onToggleExerciseComplete && (
+            <button
+              type="button"
+              onClick={() => onToggleExerciseComplete(exercise.id)}
+              className="flex items-center gap-1 font-mono text-[11px] px-2.5 py-1.5 rounded-lg transition-all duration-150 active:scale-95 cursor-pointer flex-shrink-0"
+              style={{
+                background: isExerciseDone
+                  ? "#dfff00"
+                  : "rgba(255, 255, 255, 0.05)",
+                border: isExerciseDone
+                  ? "1px solid #dfff00"
+                  : "1px solid rgba(255, 255, 255, 0.12)",
+                color: isExerciseDone ? "#000000" : "#e5e2e1",
+                fontWeight: isExerciseDone ? 800 : 500,
+              }}
+            >
+              <span>{isExerciseDone ? "✓ Completed" : "Mark Done"}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Notes field ───────────────────────────────────────────────────── */}

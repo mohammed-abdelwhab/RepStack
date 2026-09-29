@@ -48,6 +48,7 @@ export type GymTrackerAction =
       type: "LOG_SESSION";
       payload: { session: Session; entries: SetEntry[]; prs: PersonalRecord[] };
     }
+  | { type: "REORDER_EXERCISES"; payload: number[] }
   | { type: "RESET_DATA" };
 
 export const initialState: GymTrackerState = {
@@ -192,6 +193,18 @@ export function gymTrackerReducer(
         ),
         setEntries: [...state.setEntries, ...action.payload.entries],
         personalRecords: updatedPRs,
+      };
+    }
+
+    case "REORDER_EXERCISES": {
+      const orderMap = new Map(action.payload.map((id, idx) => [id, idx]));
+      return {
+        ...state,
+        exercises: state.exercises
+          .map((e) =>
+            orderMap.has(e.id) ? { ...e, sort_order: orderMap.get(e.id)! } : e,
+          )
+          .sort((a, b) => a.sort_order - b.sort_order),
       };
     }
 

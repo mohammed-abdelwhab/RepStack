@@ -6,6 +6,7 @@ interface WorkoutCompletionModalProps {
   totalVolume: number;
   totalSets: number;
   exercisesCompleted: number;
+  durationSeconds?: number;
   newPRs: { exerciseName: string; weight: number; reps: number }[];
   onClose: () => void;
 }
@@ -16,6 +17,7 @@ export function WorkoutCompletionModal({
   totalVolume,
   totalSets,
   exercisesCompleted,
+  durationSeconds,
   newPRs,
   onClose,
 }: WorkoutCompletionModalProps) {
@@ -116,6 +118,22 @@ export function WorkoutCompletionModal({
           <strong className="text-[#dfff00]">{dayName}</strong> session saved to
           your database history!
         </p>
+
+        {Boolean(durationSeconds && durationSeconds > 0) && (
+          <div
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-2 font-mono text-xs font-bold"
+            style={{
+              background: "rgba(223, 255, 0, 0.1)",
+              border: "1px solid rgba(223, 255, 0, 0.3)",
+              color: "#dfff00",
+            }}
+          >
+            <span>⏱️ Total Time:</span>
+            <span>
+              {Math.floor(durationSeconds! / 60)}m {durationSeconds! % 60}s
+            </span>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-2 my-5">

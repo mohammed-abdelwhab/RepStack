@@ -71,46 +71,71 @@ export function ExerciseProgressionChart() {
     return null;
   }
 
-  // ── Calculate SVG Path Coordinates ──────────────────────────────────────────
-  const chartHeight = 160;
-  const paddingX = 24;
-  const paddingY = 24;
+  // ── Calculate Progression Bars with +1 Rep Progress Logic ──────────────────
+  const maxWeightAll = Math.max(...timeline.map((p) => p.maxWeight), 1);
 
-  const weights = timeline.map((p) => p.maxWeight);
-  const minWeight = weights.length > 0 ? Math.min(...weights) : 0;
-  const maxWeight = weights.length > 0 ? Math.max(...weights) : 100;
-  // Add margin to scale so line doesn't hit boundaries
-  const yMin = Math.max(0, minWeight - 5);
-  const yMax = maxWeight === yMin ? yMin + 10 : maxWeight + 5;
-  const yRange = yMax - yMin;
+  const sessionBars = timeline.map((curr, idx) => {
+    if (idx === 0) {
+      return {
+        ...curr,
+        isProgress: true,
+        diffBadge: "Baseline",
+        badgeColor: "#565C66",
+        heightPct: Math.max(
+          35,
+          Math.round((curr.maxWeight / maxWeightAll) * 100),
+        ),
+      };
+    }
 
-  const getCoordinates = (index: number, weight: number, total: number) => {
-    const x =
-      total <= 1 ? 50 : paddingX + (index / (total - 1)) * (100 - paddingX * 2);
-    const normalizedY = (weight - yMin) / (yRange || 1);
-    const y =
-      chartHeight - paddingY - normalizedY * (chartHeight - paddingY * 2);
-    return { x, y };
-  };
+    const prev = timeline[idx - 1];
+    const weightDiff = curr.maxWeight - prev.maxWeight;
+    const repsDiff = curr.maxReps - prev.maxReps;
 
-  const points = timeline.map((pt, i) => ({
-    ...pt,
-    ...getCoordinates(i, pt.maxWeight, timeline.length),
-  }));
+    const isWeightUp = weightDiff > 0;
+    const isRepsUpAtSameWeight = weightDiff === 0 && repsDiff > 0;
+    const isHigherEffectiveVolume = curr.est1RM > prev.est1RM;
+    const isProgress =
+      isWeightUp || isRepsUpAtSameWeight || isHigherEffectiveVolume;
 
-  // Construct SVG Path
-  let linePath = "";
-  let areaPath = "";
+    let diffBadge = "";
+    let badgeColor = "#565C66";
 
-  if (points.length > 1) {
-    linePath =
-      `M ${points[0].x} ${points[0].y} ` +
-      points
-        .slice(1)
-        .map((p) => `L ${p.x} ${p.y}`)
-        .join(" ");
-    areaPath = `${linePath} L ${points[points.length - 1].x} ${chartHeight} L ${points[0].x} ${chartHeight} Z`;
-  }
+    if (isWeightUp) {
+      diffBadge = `▲ +${weightDiff}kg${repsDiff > 0 ? ` (+${repsDiff}r)` : ""}`;
+      badgeColor = "#dfff00";
+    } else if (isRepsUpAtSameWeight) {
+      diffBadge = `▲ +${repsDiff} rep${repsDiff > 1 ? "s" : ""}`;
+      badgeColor = "#dfff00";
+    } else if (isHigherEffectiveVolume) {
+      diffBadge = `▲ Overload`;
+      badgeColor = "#dfff00";
+    } else if (weightDiff === 0 && repsDiff === 0) {
+      diffBadge = `= Equal`;
+      badgeColor = "#9ca3af";
+    } else {
+      diffBadge = `▼ Deload`;
+      badgeColor = "#565C66";
+    }
+
+    const heightPct = Math.max(
+      35,
+      Math.round((curr.maxWeight / maxWeightAll) * 100),
+    );
+
+    return {
+      ...curr,
+      isProgress,
+      diffBadge,
+      badgeColor,
+      heightPct,
+    };
+  });
+
+  const latestBar = sessionBars[sessionBars.length - 1];
+  const prevBar =
+    sessionBars.length > 1 ? sessionBars[sessionBars.length - 2] : null;
+  const progressSessionsCount = sessionBars.filter((b) => b.isProgress).length;
 
   return (
     <section
@@ -279,30 +304,53 @@ export function ExerciseProgressionChart() {
         </div>
       </div>
 
-      {/* ── Progression Line Graph SVG ─────────────────────────────────────── */}
+      {/* ── Progression Status Banner ─────────────────────────────────────── */}
+      {prevBar && (
+        <div
+          className="flex items-center justify-between px-3.5 py-2.5 rounded-xl font-mono text-xs"
+          style={{
+            background: latestBar.isProgress
+              ? "rgba(223, 255, 0, 0.08)"
+              : "rgba(255, 255, 255, 0.03)",
+            border: latestBar.isProgress
+              ? "1px solid rgba(223, 255, 0, 0.25)"
+              : "1px solid rgba(255, 255, 255, 0.08)",
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <span>{latestBar.isProgress ? "🔥" : "⚖️"}</span>
+            <span
+              className="font-bold"
+              style={{ color: latestBar.isProgress ? "#dfff00" : "#ffffff" }}
+            >
+              {latestBar.isProgress
+                ? `Progression Detected: ${latestBar.diffBadge} vs last session!`
+                : "No overload this session — target +1 rep next time!"}
+            </span>
+          </div>
+          <span className="text-[10px] text-steel">
+            {progressSessionsCount}/{sessionBars.length} improved
+          </span>
+        </div>
+      )}
+
+      {/* ── Progression Bar Chart ─────────────────────────────────────── */}
       <div className="flex flex-col gap-1 mt-1">
         <div className="flex justify-between text-xs text-steel font-mono">
-          <span>Progression Curve</span>
-          <span>{yMax} kg</span>
+          <span>Session Performance (Weights & Reps)</span>
+          <span>Max: {maxWeightAll} kg</span>
         </div>
 
         <div
-          className="w-full relative rounded-xl overflow-hidden flex items-center justify-center"
+          className="w-full relative rounded-xl overflow-x-auto p-4 flex items-end custom-scrollbar"
           style={{
-            height: chartHeight,
+            minHeight: "220px",
             background: "rgba(0, 0, 0, 0.4)",
             border: "1px solid rgba(255, 255, 255, 0.06)",
           }}
         >
-          {/* Subtle horizontal grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-10">
-            <div className="w-full border-b border-white" />
-            <div className="w-full border-b border-white" />
-            <div className="w-full border-b border-white" />
-          </div>
-
-          {timeline.length === 0 ? (
-            <div className="text-center p-4">
+          {sessionBars.length === 0 ? (
+            <div className="text-center p-4 w-full">
               <p className="font-body text-xs text-steel">
                 No session entries recorded for{" "}
                 <span className="text-white font-medium">
@@ -314,126 +362,123 @@ export function ExerciseProgressionChart() {
                 Log a workout to view weights & reps progression!
               </p>
             </div>
-          ) : timeline.length === 1 ? (
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full flex items-center justify-center animate-pulse"
-                style={{
-                  background: "#dfff00",
-                  boxShadow: "0 0 15px rgba(223, 255, 0, 0.6)",
-                }}
-              />
-              <p className="font-mono text-xs text-white">
-                Initial Baseline:{" "}
-                <span style={{ color: "#dfff00" }}>
-                  {timeline[0].maxWeight} kg
-                </span>{" "}
-                ({timeline[0].maxReps} reps)
-              </p>
-              <span className="font-mono text-[10px] text-steel">
-                {timeline[0].sessionDate}
-              </span>
-            </div>
           ) : (
-            <>
-              <svg
-                viewBox={`0 0 100 ${chartHeight}`}
-                preserveAspectRatio="none"
-                className="w-full h-full absolute inset-0 overflow-visible"
-              >
-                <defs>
-                  <linearGradient
-                    id="chartGradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="0%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stopColor="#dfff00" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#121212" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
+            <div className="flex items-end gap-3 min-w-full justify-around pt-8 pb-2">
+              {sessionBars.map((bar, idx) => {
+                const isHovered = hoveredIdx === idx;
+                const isLatest = idx === sessionBars.length - 1;
 
-                {/* Area Gradient Fill */}
-                <path d={areaPath} fill="url(#chartGradient)" />
-
-                {/* Main Curve Line */}
-                <path
-                  d={linePath}
-                  fill="none"
-                  stroke="#dfff00"
-                  strokeWidth="2.5"
-                  vectorEffect="non-scaling-stroke"
-                />
-
-                {/* Data Points */}
-                {points.map((p, idx) => {
-                  const isLatest = idx === points.length - 1;
-                  const isHovered = hoveredIdx === idx;
-                  return (
-                    <g key={idx}>
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r={isLatest || isHovered ? 5 : 3.5}
-                        fill={isLatest ? "#dfff00" : "#131313"}
-                        stroke="#dfff00"
-                        strokeWidth="2"
-                        vectorEffect="non-scaling-stroke"
-                        className="transition-all duration-150 cursor-pointer"
-                        onMouseEnter={() => setHoveredIdx(idx)}
-                        onMouseLeave={() => setHoveredIdx(null)}
-                      />
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* Hover Tooltip Overlay */}
-              {hoveredIdx !== null && points[hoveredIdx] && (
-                <div
-                  className="absolute pointer-events-none rounded px-2 py-1 font-mono text-[11px] shadow-lg z-20"
-                  style={{
-                    left: `${points[hoveredIdx].x}%`,
-                    top: `${points[hoveredIdx].y - 38}px`,
-                    transform: "translateX(-50%)",
-                    background: "#000000",
-                    border: "1px solid #dfff00",
-                    color: "#ffffff",
-                  }}
-                >
+                return (
                   <div
-                    className="font-bold text-center"
-                    style={{ color: "#dfff00" }}
+                    key={idx}
+                    className="flex flex-col items-center gap-1.5 flex-1 max-w-[85px] min-w-[55px] cursor-pointer group relative"
+                    onMouseEnter={() => setHoveredIdx(idx)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                    onClick={() =>
+                      setHoveredIdx(hoveredIdx === idx ? null : idx)
+                    }
                   >
-                    {points[hoveredIdx].maxWeight} kg ×{" "}
-                    {points[hoveredIdx].maxReps}
+                    {/* Floating Progress Badge Above Bar */}
+                    <span
+                      className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded transition-transform group-hover:scale-105 whitespace-nowrap"
+                      style={{
+                        background: bar.isProgress
+                          ? "rgba(223, 255, 0, 0.15)"
+                          : "rgba(255, 255, 255, 0.05)",
+                        color: bar.badgeColor,
+                        border: bar.isProgress
+                          ? "1px solid rgba(223, 255, 0, 0.3)"
+                          : "1px solid rgba(255, 255, 255, 0.08)",
+                      }}
+                    >
+                      {bar.diffBadge}
+                    </span>
+
+                    {/* Vertical Session Bar */}
+                    <div
+                      className="w-full rounded-xl flex flex-col justify-between items-center py-2 transition-all duration-200"
+                      style={{
+                        height: `${Math.max(bar.heightPct * 1.3, 70)}px`,
+                        background: bar.isProgress
+                          ? "linear-gradient(180deg, #dfff00 0%, rgba(223, 255, 0, 0.35) 100%)"
+                          : "linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 100%)",
+                        border: bar.isProgress
+                          ? "1.5px solid #dfff00"
+                          : "1px solid rgba(255, 255, 255, 0.12)",
+                        boxShadow: bar.isProgress
+                          ? isHovered || isLatest
+                            ? "0 0 20px rgba(223, 255, 0, 0.45)"
+                            : "0 0 10px rgba(223, 255, 0, 0.2)"
+                          : "none",
+                        transform: isHovered ? "scaleY(1.03)" : "none",
+                      }}
+                    >
+                      {/* Weight inside bar */}
+                      <span
+                        className="font-mono text-[11px] font-black leading-none"
+                        style={{
+                          color: bar.isProgress ? "#000000" : "#ffffff",
+                        }}
+                      >
+                        {bar.maxWeight}kg
+                      </span>
+
+                      {/* Reps inside bar */}
+                      <span
+                        className="font-mono text-[10px] font-bold leading-none px-1 py-0.5 rounded"
+                        style={{
+                          background: bar.isProgress
+                            ? "rgba(0, 0, 0, 0.25)"
+                            : "rgba(0, 0, 0, 0.5)",
+                          color: bar.isProgress ? "#000000" : "#e5e2e1",
+                        }}
+                      >
+                        {bar.maxReps}r
+                      </span>
+                    </div>
+
+                    {/* Bottom Label & Date */}
+                    <div className="flex flex-col items-center mt-0.5">
+                      <span
+                        className="font-mono text-[10px] font-bold"
+                        style={{
+                          color: isLatest ? "#dfff00" : "#9ca3af",
+                        }}
+                      >
+                        {isLatest ? "NOW" : bar.label}
+                      </span>
+                      <span className="font-mono text-[8px] text-steel/70 truncate max-w-[55px]">
+                        {bar.sessionDate.slice(5)}
+                      </span>
+                    </div>
+
+                    {/* Hover/Tap Detailed Tooltip */}
+                    {isHovered && (
+                      <div
+                        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 pointer-events-none rounded-xl p-2 font-mono text-[10px] shadow-2xl z-30 min-w-[110px] text-center"
+                        style={{
+                          background: "#000000",
+                          border: "1px solid #dfff00",
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.8)",
+                        }}
+                      >
+                        <div className="text-white font-bold">
+                          {bar.maxWeight} kg × {bar.maxReps} reps
+                        </div>
+                        <div className="text-[#dfff00] font-medium text-[9px] mt-0.5">
+                          1RM: ~{bar.est1RM} kg
+                        </div>
+                        <div className="text-steel text-[8px] mt-0.5">
+                          {bar.sessionDate}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[9px] text-steel text-center">
-                    {points[hoveredIdx].sessionDate}
-                  </div>
-                </div>
-              )}
-            </>
+                );
+              })}
+            </div>
           )}
         </div>
-
-        {/* X-Axis Timeline Labels */}
-        {timeline.length > 1 && (
-          <div className="flex justify-between px-6 pt-1 text-[10px] font-mono text-steel">
-            {timeline.map((pt, idx) => (
-              <span
-                key={idx}
-                className={idx === timeline.length - 1 ? "font-bold" : ""}
-                style={{
-                  color: idx === timeline.length - 1 ? "#dfff00" : "#565C66",
-                }}
-              >
-                {idx === timeline.length - 1 ? "NOW" : pt.label}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );
